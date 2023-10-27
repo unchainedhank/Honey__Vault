@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class TestClass {
+public class EncoderDecoder {
 
     private static List<PasswdPath> UserVaultSet;
 //    private static double alpha;

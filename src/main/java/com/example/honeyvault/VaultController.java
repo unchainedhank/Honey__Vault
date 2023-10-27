@@ -1,7 +1,7 @@
 package com.example.honeyvault;
 
 import cn.hutool.core.lang.Pair;
-import com.example.honeyvault.tool.TestClass;
+import com.example.honeyvault.tool.EncoderDecoder;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +21,7 @@ public class VaultController {
 //    PathRepoJdbc pathRepoJdbc;
 
     @Resource
-    TestClass testClass;
+    EncoderDecoder encoderDecoder;
 
     private UserVault userVault;
 
@@ -37,7 +37,7 @@ public class VaultController {
 
     @PostMapping("encodeUser")
     public List<Pair<String, String>> encode() {
-        List<Pair<String, String>> encode = testClass.encode(this.userVault.getVault(), fixedLength);
+        List<Pair<String, String>> encode = encoderDecoder.encode(this.userVault.getVault(), fixedLength);
         System.out.println(encode);
         return encode;
     }
@@ -53,7 +53,7 @@ public class VaultController {
 //        initVault.add("1abab2");
 
 
-        return testClass.encode(initVault, fixedLength);
+        return encoderDecoder.encode(initVault, fixedLength);
 //        System.out.println(encode);
 //        List<String> encodedStrings = new LinkedList<>();
 //        encode.forEach(pair->{
@@ -66,7 +66,7 @@ public class VaultController {
     @PostMapping("/decode")
     public List<String> decode(@RequestBody List<String> encodedStrings, @RequestParam String mainPswd) {
         if (mainPswd != null && mainPswd.equals(userVault.getMainPassword())) {
-            return testClass.decode(encodedStrings);
+            return encoderDecoder.decode(encodedStrings);
         } else {
             //            输入错误的主口令
 //            确定一个随机的vault长度 1-10
@@ -78,7 +78,7 @@ public class VaultController {
                 randomizedEncodedStrings.add(randomizedEncodedPswd);
             }
 
-            return testClass.decode(randomizedEncodedStrings);
+            return encoderDecoder.decode(randomizedEncodedStrings);
 
         }
 

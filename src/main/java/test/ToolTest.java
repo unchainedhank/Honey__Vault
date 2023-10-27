@@ -1,4 +1,4 @@
-package com.example.honeyvault.tool;
+package test;
 
 import cn.hutool.core.lang.Pair;
 import cn.hutool.core.math.MathUtil;
