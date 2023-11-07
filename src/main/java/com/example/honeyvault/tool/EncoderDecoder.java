@@ -248,6 +248,9 @@ public class EncoderDecoder {
 
     public List<Pair<String, String>> encode(List<String> initVault,int fixedLength) {
         encoderTable.buildEncodeTables();
+//        initVault.forEach(pswd->{
+//            PreProcess
+//        });
         List<String> vault = initVault(initVault);
         Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
         List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();

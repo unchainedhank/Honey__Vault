@@ -1,5 +1,6 @@
-package com.example.honeyvault.data_access;
+package com.example.honeyvault.tool;
 
+import cn.hutool.extra.pinyin.PinyinUtil;
 import net.sourceforge.pinyin4j.PinyinHelper;
 import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
@@ -13,11 +14,16 @@ import java.util.regex.Pattern;
 
 @Component
 public class PreProcess {
-    final HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
+    static HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
 
 
-    public Map<String, String> preName(String name) {
 
+    public static void main(String[] args) {
+        System.out.println(preName("安超"));
+    }
+
+
+    static Map<String, String> preName(String name) {
         format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
         format.setVCharType(HanyuPinyinVCharType.WITH_V);
 
@@ -28,18 +34,21 @@ public class PreProcess {
         String[] s = namePinyin.split(" ");
         String fullName = getNamePinyin(name, "");
 
-        Map<String, String> nValues = new HashMap<>();
-        nValues.put("N1", fullName);
-        nValues.put("N2", getN2(s));
-        nValues.put("N3", lastNamePinyin);
-        nValues.put("N4", firstNamePinyin);
-        nValues.put("N5", getN5(s));
-        nValues.put("N6", getN6(s));
-        nValues.put("N7", getN7(s));
-        return nValues;
+        Map<String, String> preNameMap = new HashMap<>();
+        preNameMap.put("N1", fullName);
+        preNameMap.put("N2", getN2(s));
+        preNameMap.put("N3", lastNamePinyin);
+        preNameMap.put("N4", firstNamePinyin);
+        preNameMap.put("N5", getN5(s));
+        preNameMap.put("N6", getN6(s));
+        preNameMap.put("N7", getN7(s));
+        preNameMap.put("N8", firstNamePinyin+lastNamePinyin);
+        preNameMap.put("N9", getN9(name));
+        preNameMap.put("N10", Character.toUpperCase(firstNamePinyin.charAt(0)) + firstNamePinyin.substring(1));
+        return preNameMap;
     }
 
-    private String getNamePinyin(String name, String separator) {
+    private static String getNamePinyin(String name, String separator) {
         StringBuilder pinyin = new StringBuilder();
         for (char c : name.toCharArray()) {
             if (Character.isWhitespace(c)) {
@@ -59,7 +68,7 @@ public class PreProcess {
         return pinyin.toString().trim();
     }
 
-    private String getN2(String[] s) {
+    private static String getN2(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (String value : s) {
             String substring = value.substring(0, 1);
@@ -68,7 +77,7 @@ public class PreProcess {
         return builder.toString();
     }
 
-    private String getN5(String[] s) {
+    private static String getN5(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i < s.length; i++) {
             String substring = s[i].substring(0, 1);
@@ -77,7 +86,7 @@ public class PreProcess {
         return builder + s[0];
     }
 
-    private String getN6(String[] s) {
+    private static String getN6(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i < s.length; i++) {
             String substring = s[i].substring(0, 1);
@@ -86,9 +95,20 @@ public class PreProcess {
         return builder.insert(0, s[0]).toString();
     }
 
-    private String getN7(String[] s) {
+    private static String getN7(String[] s) {
         return s[0].substring(0, 1).toUpperCase() + s[0].substring(1);
     }
+
+    private static String getN9(String name) {
+        char[] chars = name.toCharArray();
+        StringBuilder N9Builder = new StringBuilder();
+        for (int i = 1; i < chars.length; i++) {
+            N9Builder.append(PinyinUtil.getFirstLetter(chars[i]));
+        }
+        N9Builder.append(PinyinUtil.getFirstLetter(chars[0]));
+        return N9Builder.toString();
+    }
+
 
 
     public Map<String, String> preBirth(String year,String month,String day) {
@@ -110,13 +130,13 @@ public class PreProcess {
     }
 
 
-    public Map<String, String> preAccountName(String name) {
-        Map<String, String> segments = new HashMap<>();
-        segments.put("A1", name); // A1
-        segments.put("A2", extractFirstLetterSegment(name)); // A2
-        segments.put("A3", extractFirstDigitSegment(name)); // A3
-        return segments;
-    }
+//    public Map<String, String> preAccountName(String name) {
+//        Map<String, String> segments = new HashMap<>();
+//        segments.put("A1", name); // A1
+//        segments.put("A2", extractFirstLetterSegment(name)); // A2
+//        segments.put("A3", extractFirstDigitSegment(name)); // A3
+//        return segments;
+//    }
 
     private String extractFirstLetterSegment(String name) {
         StringBuilder segment = new StringBuilder();
