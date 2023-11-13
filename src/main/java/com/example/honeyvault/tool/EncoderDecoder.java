@@ -30,6 +30,9 @@ public class EncoderDecoder {
     @Resource
     private EncoderTable encoderTable;
 
+    @Resource
+    PreProcess preProcessor;
+
     @PostConstruct
     public void initVault() {
         UserVaultSet = repo.findAll();
@@ -39,6 +42,92 @@ public class EncoderDecoder {
 //    public void initAlpha() {
 //        alpha = calAlpha();
 //    }
+
+    public List<Pair<String, String>> encode(List<String> initVault,int fixedLength) {
+        encoderTable.buildEncodeTables();
+        List<String> vault = initVault(initVault);
+        Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
+        List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
+        String firstPswd = vault.get(1);
+        String encodeFirstPswd = algo4(0, firstPswd, firstPswd);
+        encodeFirstPswd = fillWithRandom(encodeFirstPswd, fixedLength);
+        pswd2EncodeString.add(new Pair<>(firstPswd, encodeFirstPswd));
+
+        // j is i，i is i+1
+        for (int i = 2; i < vault.size(); i++) {
+            for (int j = 1; j < i; j++) {
+                String pwi1 = vault.get(i);
+                String pwi = vault.get(j);
+
+                double A = (1 - f_fit(i)) / (i-1);
+                double B = f_fit(i);
+                double pr2 = B * getMarkovProb(vault.get(i));
+                pathProbMap.put(new Pair<>(i, i), pr2);
+                if (CalPath.findLongestCommonSubstring(pwi1, pwi).length() >=
+                        0.5 * Math.max(pwi1.length(), pwi.length())) {
+                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
+                    double pr_ssm = calPr_ssm(paths);
+                    double pr1 = A * pr_ssm;
+                    pathProbMap.put(new Pair<>(i, j), pr1);
+////                if (JaccardSimilarity(pwi, pwi1) > 0.3 || LevenshteinSim(pwi1, pwi) > 0.3) {
+////                      计算pw_i+1的pr2
+//                    pathProbMap.put(new Pair<>(i, i), pr2);
+////                      如果两个口令不一样
+//                    if (!pwi1.equals(pwi)) {
+////                          计算所有可能的路径
+//                        List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
+//                        double pr_ssm = calPr_ssm(paths);
+//                        double pr1 = (1 - (i * alpha) / (i * alpha + 1 - alpha)) * A * pr_ssm;
+//                        pathProbMap.put(new Pair<>(i, j), pr1);
+//                    }
+////                      如果两个口令一样
+//                    else {
+////                      pwi->pw_i+1的 pr1为alpha
+//                        pathProbMap.put(new Pair<>(i, j), (i * alpha) / (i * alpha + 1 - alpha) * A);
+//                    }
+
+                }
+//                  如果两个口令相似度太低
+                else {
+//                  pwi->pw_i+1的 pr1为0
+                    pathProbMap.put(new Pair<>(i, j), 0.0);
+                }
+            }
+        }
+//          根据概率选择一个base口令
+//          pw_i+1->pwi
+//          修改：Key-Value顺序
+//      选择一个唯一的路径
+        Map<Integer, Integer> pwi1ToPwi = selectUniquei2(pathProbMap);
+//        第一个密码
+//      直接编码 map->table
+
+        pwi1ToPwi.forEach((pwi1Index, pwiIndex) -> {
+            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
+            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
+//              确定g
+            int g;
+            if (pwi1Index.equals(pwiIndex)) g = 0;
+//              g=i'
+            else g = pwiIndex;
+//              index=i'
+
+            System.out.println("g" + ":" + g);
+            System.out.println("index" + ":" + pwiIndex);
+            Pair<Double, Double> gBound = gEncoder(g, pwi1Index);
+            BigDecimal gDecimal = getRandomValue(gBound.getKey(), gBound.getValue());
+            String encodedG = toBinaryString(gDecimal, encoderTable.secParam_L);
+            String encodeString = algo4(g, vault.get(pwiIndex), vault.get(pwi1Index));
+            System.out.println("encoded string" + ":" + encodeString);
+
+            encodeString = encodedG + encodeString;
+
+            encodeString = fillWithRandom(encodeString, fixedLength);
+            pswd2EncodeString.add(new Pair<>(vault.get(pwi1Index), encodeString));
+            System.out.println(pswd2EncodeString);
+        });
+        return pswd2EncodeString;
+    }
 
     public static double f_fit(int i) {
         i = i - 1;
@@ -243,95 +332,6 @@ public class EncoderDecoder {
             }
         }
         return encodeString.toString();
-    }
-
-
-    public List<Pair<String, String>> encode(List<String> initVault,int fixedLength) {
-        encoderTable.buildEncodeTables();
-//        initVault.forEach(pswd->{
-//            PreProcess
-//        });
-        List<String> vault = initVault(initVault);
-        Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
-        List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
-        String firstPswd = vault.get(1);
-        String encodeFirstPswd = algo4(0, firstPswd, firstPswd);
-        encodeFirstPswd = fillWithRandom(encodeFirstPswd, fixedLength);
-        pswd2EncodeString.add(new Pair<>(firstPswd, encodeFirstPswd));
-
-        // j is i，i is i+1
-        for (int i = 2; i < vault.size(); i++) {
-            for (int j = 1; j < i; j++) {
-                String pwi1 = vault.get(i);
-                String pwi = vault.get(j);
-
-                double A = (1 - f_fit(i)) / (i-1);
-                double B = f_fit(i);
-                double pr2 = B * getMarkovProb(vault.get(i));
-                pathProbMap.put(new Pair<>(i, i), pr2);
-                if (CalPath.findLongestCommonSubstring(pwi1, pwi).length() >=
-                        0.5 * Math.max(pwi1.length(), pwi.length())) {
-                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-                    double pr_ssm = calPr_ssm(paths);
-                    double pr1 = A * pr_ssm;
-                    pathProbMap.put(new Pair<>(i, j), pr1);
-////                if (JaccardSimilarity(pwi, pwi1) > 0.3 || LevenshteinSim(pwi1, pwi) > 0.3) {
-////                      计算pw_i+1的pr2
-//                    pathProbMap.put(new Pair<>(i, i), pr2);
-////                      如果两个口令不一样
-//                    if (!pwi1.equals(pwi)) {
-////                          计算所有可能的路径
-//                        List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-//                        double pr_ssm = calPr_ssm(paths);
-//                        double pr1 = (1 - (i * alpha) / (i * alpha + 1 - alpha)) * A * pr_ssm;
-//                        pathProbMap.put(new Pair<>(i, j), pr1);
-//                    }
-////                      如果两个口令一样
-//                    else {
-////                      pwi->pw_i+1的 pr1为alpha
-//                        pathProbMap.put(new Pair<>(i, j), (i * alpha) / (i * alpha + 1 - alpha) * A);
-//                    }
-
-                }
-//                  如果两个口令相似度太低
-                else {
-//                  pwi->pw_i+1的 pr1为0
-                    pathProbMap.put(new Pair<>(i, j), 0.0);
-                }
-            }
-        }
-//          根据概率选择一个base口令
-//          pw_i+1->pwi
-//          修改：Key-Value顺序
-//      选择一个唯一的路径
-        Map<Integer, Integer> pwi1ToPwi = selectUniquei2(pathProbMap);
-//        第一个密码
-//      直接编码 map->table
-
-        pwi1ToPwi.forEach((pwi1Index, pwiIndex) -> {
-            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
-            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
-//              确定g
-            int g;
-            if (pwi1Index.equals(pwiIndex)) g = 0;
-//              g=i'
-            else g = pwiIndex;
-//              index=i'
-
-            System.out.println("g" + ":" + g);
-            System.out.println("index" + ":" + pwiIndex);
-            Pair<Double, Double> gBound = gEncoder(g, pwi1Index);
-            BigDecimal gDecimal = getRandomValue(gBound.getKey(), gBound.getValue());
-            String encodedG = toBinaryString(gDecimal, encoderTable.secParam_L);
-            String encodeString = algo4(g, vault.get(pwiIndex), vault.get(pwi1Index));
-            System.out.println("encoded string" + ":" + encodeString);
-
-            encodeString = encodedG + encodeString;
-
-            encodeString = fillWithRandom(encodeString, fixedLength);
-            pswd2EncodeString.add(new Pair<>(vault.get(pwi1Index), encodeString));
-        });
-        return pswd2EncodeString;
     }
 
     //  cal method

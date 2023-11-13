@@ -1,29 +1,77 @@
 package com.example.honeyvault.tool;
 
 import cn.hutool.extra.pinyin.PinyinUtil;
+import com.example.honeyvault.UserVault;
+import com.example.honeyvault.data_access.PasswdPath;
+import com.example.honeyvault.data_access.PathRepo;
 import net.sourceforge.pinyin4j.PinyinHelper;
 import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
 import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.Map;
+import javax.annotation.Resource;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
 public class PreProcess {
-    static HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
+    HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
+    @Resource
+    private PathRepo pathRepo;
 
-
-
-    public static void main(String[] args) {
-        System.out.println(preName("安超"));
+    public List<List<String>> modifyPswd2PII() {
+        List<PasswdPath> all = pathRepo.findAll();
+        List<List<String>> result = new LinkedList<>();
+        for (PasswdPath user : all) {
+            String id12306 = user.getId12306();
+            if (id12306==null) continue;
+            if (id12306.length()<17) continue;
+            String password163 = user.getPassword163();
+            String passwdCN = user.getPasswd_CN();
+            String password12306 = user.getPassword12306();
+            List<String> vault = new LinkedList<>();
+            vault.add(password12306);
+            vault.add(passwdCN);
+            if (password163 != null) {
+                vault.add(password163);
+            }
+            Date date = new Date();
+            try {
+                date = parseBirthdayFromIdCard(user.getId12306());
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            UserVault piiInstance =
+                    UserVault.builder().vault(vault).name(user.getReal_name()).birthDate(date).email(user.getEmail_CN()).idCard(user.getId12306()).phone(user.getPhone()).build();
+            List<String> pswdListWithPII = new LinkedList<>();
+            preProcessPII(piiInstance).forEach(s -> pswdListWithPII.add(String.join("", s)));
+            result.add(pswdListWithPII);
+        }
+        return result;
     }
 
 
-    static Map<String, String> preName(String name) {
+    public List<List<String>> preProcessPII(UserVault user) {
+        Map<String, String> nameMap = preName(user.getName());
+        Map<String, String> birthDayMap = preBirth(user.getBirthDate());
+        Map<String, String> emailMap = preEmail(user.getEmail());
+        Map<String, String> phoneMap = prePhone(user.getPhone());
+        Map<String, String> idMap = preIdCard(user.getIdCard());
+        List<String> vault = user.getVault();
+        List<List<String>> updatedVault = new LinkedList<>();
+        vault.forEach(password -> {
+            List<String> updatedPassword = passwordWithPII(password, nameMap, birthDayMap, emailMap, phoneMap, idMap);
+            updatedVault.add(updatedPassword);
+        });
+        return updatedVault;
+    }
+
+
+    public Map<String, String> preName(String name) {
         format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
         format.setVCharType(HanyuPinyinVCharType.WITH_V);
 
@@ -42,13 +90,13 @@ public class PreProcess {
         preNameMap.put("N5", getN5(s));
         preNameMap.put("N6", getN6(s));
         preNameMap.put("N7", getN7(s));
-        preNameMap.put("N8", firstNamePinyin+lastNamePinyin);
+        preNameMap.put("N8", firstNamePinyin + lastNamePinyin);
         preNameMap.put("N9", getN9(name));
         preNameMap.put("N10", Character.toUpperCase(firstNamePinyin.charAt(0)) + firstNamePinyin.substring(1));
         return preNameMap;
     }
 
-    private static String getNamePinyin(String name, String separator) {
+    private String getNamePinyin(String name, String separator) {
         StringBuilder pinyin = new StringBuilder();
         for (char c : name.toCharArray()) {
             if (Character.isWhitespace(c)) {
@@ -68,7 +116,7 @@ public class PreProcess {
         return pinyin.toString().trim();
     }
 
-    private static String getN2(String[] s) {
+    private String getN2(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (String value : s) {
             String substring = value.substring(0, 1);
@@ -77,7 +125,7 @@ public class PreProcess {
         return builder.toString();
     }
 
-    private static String getN5(String[] s) {
+    private String getN5(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i < s.length; i++) {
             String substring = s[i].substring(0, 1);
@@ -86,7 +134,7 @@ public class PreProcess {
         return builder + s[0];
     }
 
-    private static String getN6(String[] s) {
+    private String getN6(String[] s) {
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i < s.length; i++) {
             String substring = s[i].substring(0, 1);
@@ -95,11 +143,11 @@ public class PreProcess {
         return builder.insert(0, s[0]).toString();
     }
 
-    private static String getN7(String[] s) {
+    private String getN7(String[] s) {
         return s[0].substring(0, 1).toUpperCase() + s[0].substring(1);
     }
 
-    private static String getN9(String name) {
+    private String getN9(String name) {
         char[] chars = name.toCharArray();
         StringBuilder N9Builder = new StringBuilder();
         for (int i = 1; i < chars.length; i++) {
@@ -109,10 +157,28 @@ public class PreProcess {
         return N9Builder.toString();
     }
 
+    private Date parseBirthdayFromIdCard(String idCard) throws ParseException {
+        // 身份证号码中的生日部分通常是从第7位到第14位
+        if (idCard == null) {
+            return new Date();
 
+        }
+        if (idCard.length() < 15) {
+            return new Date();
+        }
+        String birthdayString = idCard.substring(6, 14);
 
-    public Map<String, String> preBirth(String year,String month,String day) {
+        // 使用SimpleDateFormat进行解析
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        return sdf.parse(birthdayString);
+    }
 
+    public Map<String, String> preBirth(Date birthDay) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String formattedBirthday = dateFormat.format(birthDay);
+        String year = (formattedBirthday.substring(0, 4));
+        String month = (formattedBirthday.substring(5, 7));
+        String day = (formattedBirthday.substring(8, 10));
         Map<String, String> bValues = new HashMap<>();
         bValues.put("B1", year + month + day);
         bValues.put("B2", month + day + year);
@@ -184,7 +250,7 @@ public class PreProcess {
         // 使用正则表达式提取邮箱前缀的首数字部分
         Pattern pattern = Pattern.compile("^[a-zA-Z]+([0-9]+).*@.*$");
         Matcher matcher = pattern.matcher(email);
-        if (matcher.matches() &&matcher.group(1).length()>=3) {
+        if (matcher.matches() && matcher.group(1).length() >= 3) {
             return matcher.group(1);
         }
         return "";
@@ -205,6 +271,56 @@ public class PreProcess {
         segments.put("I2", card.substring(0, 3)); // I2
         segments.put("I3", card.substring(0, 6)); // I3
         return segments;
+    }
+
+    private List<String> passwordWithPII(String password, Map<String, String> nameMap,
+                                         Map<String, String> birthDayMap, Map<String, String> emailMap, Map<String,
+            String> phoneMap, Map<String, String> idMap) {
+        Map<String, String> pii = new HashMap<>();
+        pii.putAll(nameMap);
+        pii.putAll(birthDayMap);
+        pii.putAll(emailMap);
+        pii.putAll(phoneMap);
+        pii.putAll(idMap);
+        List<String> key2Remove = new ArrayList<>();
+        for (Map.Entry<String, String> piiMap : pii.entrySet()) {
+            String pattern = piiMap.getValue();
+            String token = piiMap.getKey();
+            if ("".equals(pattern)) {
+                key2Remove.add(token);
+            }
+        }
+        key2Remove.forEach(pii::remove);
+
+        Map<Integer, String> replaceIndex = new HashMap<>();
+        List<String> result = new LinkedList<>();
+        for (Map.Entry<String, String> kv : pii.entrySet()) {
+            String pattern = kv.getValue();
+            String token = kv.getKey();
+            while (password.contains(pattern)) {
+                int index = password.indexOf(pattern);
+                password = password.replaceFirst(pattern, token);
+                replaceIndex.put(index, token);
+            }
+        }
+
+        for (int i = 0; i < password.length(); ) {
+            String window;
+            if (i < password.length() - 1) {
+                window = password.substring(i, i + 2);
+            } else {
+                window = String.valueOf(password.charAt(i));
+            }
+            if (pii.containsKey(window) && (window.equals(replaceIndex.get(i)))) {
+                result.add(window);
+                i += 2;
+            } else {
+                result.add(String.valueOf(password.charAt(i)));
+                i += 1;
+            }
+        }
+
+        return result;
     }
 
 

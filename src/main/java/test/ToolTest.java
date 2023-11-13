@@ -4,10 +4,15 @@ import cn.hutool.core.lang.Pair;
 import cn.hutool.core.math.MathUtil;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.xiaoleilu.hutool.util.RandomUtil;
+import com.xiaoleilu.hutool.util.StrUtil;
+import lombok.Builder;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -16,18 +21,32 @@ public class ToolTest {
 
     static List<String> candidateList;
 
-    public static void main(String[] args) {
-//        new BigInteger("",2)
-        for (int i = 0; i < 100; i++) {
-            System.out.println(RandomUtil.randomInt(0, 2));
-        }
+    public static void main(String[] args) throws ParseException {
+        List<String> pswdsStrings = new ArrayList<>();
+        List<List<String>> pswdsWithPII = new ArrayList<>();
+        pswdsWithPII.add(List.of("123","abc"));
+        pswdsWithPII.add(List.of("234","cvb"));
+        pswdsWithPII.forEach(pswdsStrings::addAll);
+        System.out.println(pswdsStrings);
 
     }
+
+    private static Date parseBirthdayFromIdCard(String idCard) throws ParseException {
+        // 身份证号码中的生日部分通常是从第7位到第14位
+        String birthdayString = idCard.substring(6, 14);
+
+        // 使用SimpleDateFormat进行解析
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        return sdf.parse(birthdayString);
+    }
+
+
     public static double f_fit(int i) {
         double i2 = Math.pow(i, 2);
         double i3 = Math.pow(i, 3);
         return 1 / (0.02455 * i3 - 0.2945 * i2 + 3.409 * i + 0.0852);
     }
+
     private static Pair<Double, Double> gEncoder(int g, int i) {
         double L = 128;
         double pow = Math.pow(2, L);

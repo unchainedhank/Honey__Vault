@@ -35,6 +35,8 @@ public class EncoderTable {
     static List<PasswdPath> UserVaultSet;
     @Resource
     PathRepo repo;
+    @Resource
+    PreProcess preProcess;
 
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> first3ProbMap;
@@ -73,15 +75,15 @@ public class EncoderTable {
     Map<String, Double> absentMkv4ProbMap;
 
     int secParam_L;
-
+    private List<List<String>> pswdsWithPII;
     List<String> candidateList;
 
     @PostConstruct
     void buildCandidateList() {
         candidateList = new ArrayList<>();
-        candidateList.addAll(Arrays.asList("N1", "N2", "N3", "N4", "N5", "N6", "N7",
+        candidateList.addAll(Arrays.asList("N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N10",
                 "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10",
-                "A1", "A2", "A3",
+//                "A1", "A2", "A3",
                 "E1", "E2", "E3",
                 "P1", "P2", "P3",
                 "I1", "I2", "I3"));
@@ -103,22 +105,14 @@ public class EncoderTable {
         absentMkv4Table = probMap2EncodeTable(absentMkv4ProbMap);
     }
 
-//    public static void main(String[] args) {
-//        EncoderTable encoderTable = new EncoderTable();
-//        encoderTable.buildEncodeTables();
-//    }
 
     public void buildEncodeTables() {
 //      从数据库取数据
         UserVaultSet = repo.findAll();
+        pswdsWithPII = preProcess.modifyPswd2PII();
+
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap();
-
-//        String pw1 = user.getPasswd_CN();
-//        String pw2 = user.getPassword12306();
-//        List<String> vault = new ArrayList<>();
-//        vault.add(pw1);
-//        vault.add(pw2);
 
         first3ProbMap = initMkvMap(3);
 //        every4ProbMap = initMkvMap(4);
@@ -173,78 +167,36 @@ public class EncoderTable {
         encodeHiOpProbTable = probMap2EncodeTable(hiOpProbMap);
         encodeTdOpProbTable = probMap2EncodeTable(tdOpProbMap);
         encodeTiOpProbTable = probMap2EncodeTable(tiOpProbMap);
-//        System.out.println("table build");
-//        String pathPrefix = "/Users/a3/IdeaProjects/HoneyVault/src/main/resources/tables";
-//        writeMapToFile(encodePasswdLengthTable, pathPrefix + "encodePasswdLengthTable.txt");
-//        writeMapToFile(encodeFirst3Table, pathPrefix + "encodeFirst3Table.txt");
-//        writeMapToFile(encodeEvery4Table, pathPrefix + "encodeEvery4Table.txt");
-//        writeMapToFile(encodeIfHdProbTable, pathPrefix + "encodeIfHdProbTable.txt");
-//        writeMapToFile(encodeHdTimesProbTable, pathPrefix + "encodeHdTimesProbTable.txt");
-//        writeMapToFile(encodeHdOpProbTable, pathPrefix + "encodeHdOpProbTable.txt");
-//        System.out.println(encodeFirst3Table);
-//        System.out.println(encodeEvery4Table);
-//        System.out.println(encodeIfHdProbTable);
-//        System.out.println(encodeHdTimesProbTable);
-//        System.out.println(encodeHdOpProbTable);
-
     }
 
-    <T> void write2File(Map<T, EncodeLine<T>> map, String name) {
 
-//        FileWriter fileWriter = FileWriter.create(new File(name));
-//        File file = fileWriter.writeMap(map, "-->", true);
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(name))) {
-            oos.writeObject(map);
-            System.out.println("Map写入文件成功");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    <T> void writeMapToFile(Map<T, EncodeLine<T>> map, String filePath) {
-        try (OutputStream outputStream = new FileOutputStream(filePath);
-             OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
-             BufferedWriter writer = new BufferedWriter(outputStreamWriter)) {
-
-            // 写入内容
-            for (Map.Entry<T, EncodeLine<T>> entry : map.entrySet()) {
-                writer.write(entry + "\n");
-            }
-
-            System.out.println("Map写入文件成功");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
 
     private Map<Integer, Double> initPasswdLengthProbMap() {
         Map<Integer, Double> passwdLengthCount = new LinkedHashMap<>();
-        UserVaultSet.forEach(p -> {
-            String passwd_cn = p.getPasswd_CN();
-            String password12306 = p.getPassword12306();
-            passwdLengthCount.merge(passwd_cn.length(), 1.0, Double::sum);
-            passwdLengthCount.merge(password12306.length(), 1.0, Double::sum);
+        List<String> pswdsStrings = new ArrayList<>();
+        pswdsWithPII.forEach(pswdsStrings::addAll);
+        pswdsStrings.forEach(s -> {
+            passwdLengthCount.merge(s.length(), 1.0, Double::sum);
+
         });
+//        UserVaultSet.forEach(p -> {
+//            String passwd_cn = p.getPasswd_CN();
+//            String password12306 = p.getPassword12306();
+//            passwdLengthCount.merge(passwd_cn.length(), 1.0, Double::sum);
+//            passwdLengthCount.merge(password12306.length(), 1.0, Double::sum);
+//            String password163 = p.getPassword163();
+//            if (password163!=null) {
+//                passwdLengthCount.merge(password163.length(), 1.0, Double::sum);
+//            }
+//        });
         return calculateFrequency(passwdLengthCount);
     }
 
     private Map<String, Double> initMkvMap(int mkv) {
-        List<String> passwds = new ArrayList<>();
-        UserVaultSet.forEach(p ->
-        {
-            passwds.add(p.getPasswd_CN());
-            passwds.add(p.getPassword12306());
-        });
-        Map<String, Double> map = new HashMap<>();
-
-        if (mkv == 3) {
-            map = getMkv3(passwds);
-        }
-//        else {
-//            map = getMkv4(passwds);
-//        }
-        return map;
+        List<String> pswdsStrings = new ArrayList<>();
+        pswdsWithPII.forEach(pswdsStrings::addAll);
+        return getMkv3(pswdsStrings);
 //        原始的->拆95^3个Map
 //        生成
 //        遍历生成
