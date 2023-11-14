@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderDecoder {
+public class EncoderDecoderWithoutPII {
 
     private static List<PasswdPath> UserVaultSet;
     private static double alpha;
@@ -28,10 +28,8 @@ public class EncoderDecoder {
     @Resource
     private PathRepo repo;
     @Resource
-    private EncoderTable encoderTable;
+    private EncoderTableWithoutPII encoderTable;
 
-    @Resource
-    PreProcess preProcessor;
 
     @PostConstruct
     public void initVault() {
@@ -43,8 +41,12 @@ public class EncoderDecoder {
         alpha = calAlpha();
     }
 
-    public List<Pair<String, String>> encode(List<String> initVault,int fixedLength) {
-        encoderTable.buildEncodeTables();
+    private double Pr_DR(int i) {
+        return (i * alpha) / (i * alpha + 1 - alpha);
+    }
+
+    public List<Pair<String, String>> encodeWithoutPII(List<String> initVault, int fixedLength) {
+        encoderTable.buildEncodeTablesWithoutPII();
         List<String> vault = initVault(initVault);
         Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
         List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
@@ -53,57 +55,29 @@ public class EncoderDecoder {
         encodeFirstPswd = fillWithRandom(encodeFirstPswd, fixedLength);
         pswd2EncodeString.add(new Pair<>(firstPswd, encodeFirstPswd));
 
+        double pr1 = 0;
         // j is i，i is i+1
         for (int i = 2; i < vault.size(); i++) {
             for (int j = 1; j < i; j++) {
                 String pwi1 = vault.get(i);
                 String pwi = vault.get(j);
 
-                double A = (1 - f_fit(i)) / (i-1);
+                double Pr_DR_true = Pr_DR(i);
+                double A = (1 - f_fit(i)) / (i - 1);
                 double B = f_fit(i);
+
                 double pr2 = B * getMarkovProb(vault.get(i));
                 pathProbMap.put(new Pair<>(i, i), pr2);
-
+                double pr1j = 0;
                 if (!pwi.equals(pwi1)) {
                     List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-                    double pr_ssm = calPr_ssm(paths);
-                    double pr1 = ((1 - (i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha)) * A * pr_ssm;
-                    pathProbMap.put(new Pair<>(i, j), pr1);
+                    double pr_ssm = calPr_ssm(paths,Pr_DR_true);
+                    pr1j = ((1 - (i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha)) * A * pr_ssm;
+                } else {
+                    pr1j = ((i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha) * A;
                 }
-//                  如果两个口令相似度太低
-                else {
-                    pathProbMap.put(new Pair<>(i, j), ((i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha) * A);
-                }
-
-//                if (CalPath.findLongestCommonSubstring(pwi1, pwi).length() >=
-//                        0.5 * Math.max(pwi1.length(), pwi.length())) {
-//                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-//                    double pr_ssm = calPr_ssm(paths);
-//                    double pr1 = ((1 - (i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha))*A * pr_ssm;
-//                    pathProbMap.put(new Pair<>(i, j), pr1);
-//////                if (JaccardSimilarity(pwi, pwi1) > 0.3 || LevenshteinSim(pwi1, pwi) > 0.3) {
-//////                      计算pw_i+1的pr2
-////                    pathProbMap.put(new Pair<>(i, i), pr2);
-//////                      如果两个口令不一样
-////                    if (!pwi1.equals(pwi)) {
-//////                          计算所有可能的路径
-////                        List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-////                        double pr_ssm = calPr_ssm(paths);
-////                        double pr1 = (1 - (i * alpha) / (i * alpha + 1 - alpha)) * A * pr_ssm;
-////                        pathProbMap.put(new Pair<>(i, j), pr1);
-////                    }
-//////                      如果两个口令一样
-////                    else {
-//////                      pwi->pw_i+1的 pr1为alpha
-////                        pathProbMap.put(new Pair<>(i, j), (i * alpha) / (i * alpha + 1 - alpha) * A);
-////                    }
-//
-//                }
-////                  如果两个口令相似度太低
-//                else {
-////                  pwi->pw_i+1的 pr1为0
-//                    pathProbMap.put(new Pair<>(i, j), 0.0);
-//                }
+                pr1 += pr1j;
+                pathProbMap.put(new Pair<>(i, j), pr1j);
             }
         }
 //          根据概率选择一个base口令
@@ -115,8 +89,8 @@ public class EncoderDecoder {
 //      直接编码 map->table
 
         pwi1ToPwi.forEach((pwi1Index, pwiIndex) -> {
-            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
-            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
+//            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
+//            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
 //              确定g
             int g;
             if (pwi1Index.equals(pwiIndex)) g = 0;
@@ -124,8 +98,8 @@ public class EncoderDecoder {
             else g = pwiIndex;
 //              index=i'
 
-            System.out.println("g" + ":" + g);
-            System.out.println("index" + ":" + pwiIndex);
+//            System.out.println("g" + ":" + g);
+//            System.out.println("index" + ":" + pwiIndex);
             Pair<Double, Double> gBound = gEncoder(g, pwi1Index);
             BigDecimal gDecimal = getRandomValue(gBound.getKey(), gBound.getValue());
             String encodedG = toBinaryString(gDecimal, encoderTable.secParam_L);
@@ -187,7 +161,7 @@ public class EncoderDecoder {
         if (g == 0) {
             upper = Math.floor(pow * f_fit(i));
         } else {
-            col2 = (1 - f_fit(i)) / (i-1);
+            col2 = (1 - f_fit(i)) / (i - 1);
             lower = Math.floor(((f_fit(i) + col2 * (g - 1)) * pow));
             upper = Math.floor(((f_fit(i) + col2 * g) * pow));
         }
@@ -208,8 +182,8 @@ public class EncoderDecoder {
             encodeString.append(toBinaryString(encodeValue, fixedLength));
 //          编码头3个字符
             String first3String = targetString.substring(0, 3);
-            EncodeLine<String> first3EncodeLine =
-                    encoderTable.encodeFirst3Table.get(first3String);
+
+            EncodeLine<String> first3EncodeLine = encoderTable.encodeEvery6Table.get(first3String);
             encodeValue = getRandomValue(first3EncodeLine.getLowerBound(),
                     first3EncodeLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
@@ -369,13 +343,37 @@ public class EncoderDecoder {
         }
         return finalProb;
     }
+    private int countOccurrences(String input, String substring) {
+        int count = 0;
+        int index = 0;
 
-    private double getPathProb(String path) {
+        while ((index = input.indexOf(substring, index)) != -1) {
+            count++;
+            index += substring.length();
+        }
+
+        return count;
+    }
+
+    private double getPathProb(String path,double Pr_DR_true) {
+        double prob = 1;
+
         if (path != null && !path.equals("[]")) {
+            double Pr_DR_false = 1 - Pr_DR_true;
+
+            int ti = countOccurrences(path, "ti");
+            int td = countOccurrences(path, "td");
+            int hd = countOccurrences(path, "hd");
+            int hi = countOccurrences(path, "hi");
+
+            int tailM = ti + td;
+            int headM = hd + hi;
+
+            if (tailM>0) prob *= encoderTable.ifHdProbMap.get(1)+encoderTable.ifHdProbMap.get(1);
+
             path = path.replace("[", "");
             path = path.replace("]", "");
             String[] split = path.split(",");
-            double prob = 1;
             for (String op : split) {
                 op = op.trim();
                 if (op.contains("hd")) prob *= encoderTable.hdOpProbMap.get(op);
@@ -388,10 +386,10 @@ public class EncoderDecoder {
     }
 
     //  tools
-    private double calPr_ssm(List<List<String>> paths) {
+    private double calPr_ssm(List<List<String>> paths,double Pr_DR_true) {
         AtomicDouble pr_ssm = new AtomicDouble(0);
         paths.forEach(path -> {
-            double pathProb = getPathProb(path.toString());
+            double pathProb = getPathProb(path.toString(),Pr_DR_true);
             pr_ssm.getAndAdd(pathProb);
         });
         return pr_ssm.get();

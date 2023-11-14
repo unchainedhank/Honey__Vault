@@ -53,7 +53,7 @@ public class VaultController {
 
     @PostMapping("/decode")
     public List<String> decode(@RequestBody List<String> encodedStrings, @RequestParam String mainPswd) {
-//        if (mainPswd != null && mainPswd.equals(userVault.getMainPassword())) {
+        if (mainPswd != null && mainPswd.equals(userVault.getMainPassword())) {
         List<String> decodedStringList = encoderDecoder.decode(encodedStrings);
         Map<String, String> nameMap = preProcessor.preName(userVault.getName());
         Map<String, String> birthDayMap = preProcessor.preBirth(userVault.getBirthDate());
@@ -81,20 +81,20 @@ public class VaultController {
         }
         return updatedList;
 
-//        } else {
-        //            输入错误的主口令
+        } else {
+//                    输入错误的主口令
 //            确定一个随机的vault长度 1-10
-//            int vaultLength = RandomUtil.randomInt(1, 11);
-//            List<String> randomizedEncodedStrings = new LinkedList<>();
-//            for (int i = 0; i < vaultLength; i++) {
-////              128是安全参数
-//                String randomizedEncodedPswd = fillWithRandom();
-//                randomizedEncodedStrings.add(randomizedEncodedPswd);
-//            }
-//
-//            return encoderDecoder.decode(randomizedEncodedStrings);
-//
-////        }
+            int vaultLength = RandomUtil.randomInt(1, 11);
+            List<String> randomizedEncodedStrings = new LinkedList<>();
+            for (int i = 0; i < vaultLength; i++) {
+//              128是安全参数
+                String randomizedEncodedPswd = fillWithRandom();
+                randomizedEncodedStrings.add(randomizedEncodedPswd);
+            }
+
+            return encoderDecoder.decode(randomizedEncodedStrings);
+
+        }
 
 
     }

@@ -22,12 +22,7 @@ public class ToolTest {
     static List<String> candidateList;
 
     public static void main(String[] args) throws ParseException {
-        List<String> pswdsStrings = new ArrayList<>();
-        List<List<String>> pswdsWithPII = new ArrayList<>();
-        pswdsWithPII.add(List.of("123","abc"));
-        pswdsWithPII.add(List.of("234","cvb"));
-        pswdsWithPII.forEach(pswdsStrings::addAll);
-        System.out.println(pswdsStrings);
+        System.out.println("[hd(x),hi(x)]".split(",").length);
 
     }
 

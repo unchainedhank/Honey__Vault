@@ -23,8 +23,7 @@ public class PreProcess {
     @Resource
     private PathRepo pathRepo;
 
-    public List<List<String>> modifyPswd2PII() {
-        List<PasswdPath> all = pathRepo.findAll();
+    public List<List<String>> modifyPswd2PII(List<PasswdPath> all) {
         List<List<String>> result = new LinkedList<>();
         for (PasswdPath user : all) {
             String id12306 = user.getId12306();

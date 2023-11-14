@@ -1,23 +1,24 @@
 package com.example.honeyvault.tool;
 
-import com.example.honeyvault.data_access.*;
+import com.example.honeyvault.data_access.EncodeLine;
+import com.example.honeyvault.data_access.PasswdPath;
+import com.example.honeyvault.data_access.PathRepo;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.LongAdder;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTable {
+public class EncoderTableWithoutPII {
     /*
     1. g(dynamic)
     2. length
-    3. first3
-    4. every4
+    3. first5
+    4. every6
     5. ifHd
     6. ifHi
     7. ifTd
@@ -35,16 +36,15 @@ public class EncoderTable {
     static List<PasswdPath> UserVaultSet;
     @Resource
     PathRepo repo;
-    @Resource
-    PreProcess preProcess;
 
     Map<Integer, Double> passwdLengthProbMap;
-    Map<String, Double> first3ProbMap;
-    HashMap<String, HashMap<String, Double>> every4ProbMap;
+    Map<String, Double> first5ProbMap;
+    HashMap<String, HashMap<String, Double>> every6ProbMap;
     Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;
     Map<Integer, Double> ifTdProbMap;
     Map<Integer, Double> ifTiProbMap;
+
     Map<Integer, Double> hdTimesProbMap;
     Map<Integer, Double> hiTimesProbMap;
     Map<Integer, Double> tdTimesProbMap;
@@ -56,8 +56,8 @@ public class EncoderTable {
 
 
     Map<Integer, EncodeLine<Integer>> encodePasswdLengthTable;
-    Map<String, EncodeLine<String>> encodeFirst3Table;
-    Map<String, Map<String, EncodeLine<String>>> encodeEvery4Table = new HashMap<>();
+    Map<String, EncodeLine<String>> encodeFirst5Table;
+    Map<String, Map<String, EncodeLine<String>>> encodeEvery6Table = new HashMap<>();
     Map<Integer, EncodeLine<Integer>> encodeIfHdProbTable;
     Map<Integer, EncodeLine<Integer>> encodeIfHiProbTable;
     Map<Integer, EncodeLine<Integer>> encodeIfTdProbTable;
@@ -71,22 +71,26 @@ public class EncoderTable {
     Map<String, EncodeLine<String>> encodeTdOpProbTable;
     Map<String, EncodeLine<String>> encodeTiOpProbTable;
 
-    Map<String, EncodeLine<String>> absentMkv4Table;
-    Map<String, Double> absentMkv4ProbMap;
+    Map<String, EncodeLine<String>> absentMkv6Table;
+    Map<String, Double> absentMkv6ProbMap;
+
+    Double Pr_M_tail;
+    Double Pr_M_head;
+
+    Double Pr_T_insert;
+    Double Pr_T_delete;
+    Double Pr_T_deleteAndInsert;
+
+    Double Pr_H_insert;
+    Double Pr_H_delete;
+    Double Pr_H_deleteAndInsert;
 
     int secParam_L;
-    private List<List<String>> pswdsWithPII;
     List<String> candidateList;
 
     @PostConstruct
     void buildCandidateList() {
         candidateList = new ArrayList<>();
-        candidateList.addAll(Arrays.asList("N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N10",
-                "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10",
-//                "A1", "A2", "A3",
-                "E1", "E2", "E3",
-                "P1", "P2", "P3",
-                "I1", "I2", "I3"));
         List<String> strings = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
                 "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
                 "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
@@ -98,25 +102,23 @@ public class EncoderTable {
         candidateList.addAll(strings1);
     }
 
-    void buildAbsentMkv4Table() {
-        absentMkv4ProbMap = new HashMap<>();
-        double defaultValue = 0.008064516129;
-        candidateList.forEach(s -> absentMkv4ProbMap.put(s, defaultValue));
-        absentMkv4Table = probMap2EncodeTable(absentMkv4ProbMap);
+    void buildAbsentMkv6Table() {
+        absentMkv6ProbMap = new HashMap<>();
+        double defaultValue = 0.01052631579;
+        candidateList.forEach(s -> absentMkv6ProbMap.put(s, defaultValue));
+        absentMkv6Table = probMap2EncodeTable(absentMkv6ProbMap);
     }
 
 
-    public void buildEncodeTables() {
+    public void buildEncodeTablesWithoutPII() {
 //      从数据库取数据
         UserVaultSet = repo.findAll();
-        pswdsWithPII = preProcess.modifyPswd2PII(UserVaultSet);
 
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap();
 
-        first3ProbMap = initMkvMap(3);
-//        every4ProbMap = initMkvMap(4);
-        buildAbsentMkv4Table();
+        first5ProbMap = initMkvMap();
+        buildAbsentMkv6Table();
         List<String> passwds = new ArrayList<>();
         UserVaultSet.forEach(p ->
         {
@@ -124,20 +126,16 @@ public class EncoderTable {
             passwds.add(p.getPassword12306());
         });
 
-        every4ProbMap = getMkv4(passwds);
-        every4ProbMap.forEach((prefix, map) -> {
+        every6ProbMap = getMkv6(passwds);
+        every6ProbMap.forEach((prefix, map) -> {
             Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
-            encodeEvery4Table.putIfAbsent(prefix, stringEncodeTableLineMap);
-//            stringEncodeTableLineMap.forEach((suffix, line) -> {
-//                System.out.println(prefix + "|" + suffix + "---" + "lower:" + line.getLowerBound() + ":" + "upper"
-//                + line.getUpperBound());
-//            });
+            encodeEvery6Table.putIfAbsent(prefix, stringEncodeTableLineMap);
         });
 
-        ifHdProbMap = initIfHdProbMap();
-        ifHiProbMap = initIfHiProbMap();
-        ifTdProbMap = initIfTdProbMap();
-        ifTiProbMap = initIfTiProbMap();
+        ifHdProbMap = initIfOpProbMap("hd");
+        ifHiProbMap = initIfOpProbMap("hi");
+        ifTdProbMap = initIfOpProbMap("td");
+        ifTiProbMap = initIfOpProbMap("ti");
 
         hdTimesProbMap = smoothTimesMap(getOpCountProbMap("hd"));
         hiTimesProbMap = smoothTimesMap(getOpCountProbMap("hi"));
@@ -149,12 +147,24 @@ public class EncoderTable {
         tdOpProbMap = maps.get(2);
         tiOpProbMap = maps.get(3);
 
-//        secParam_L = calL();
+
+        Pr_M_tail = initProbM("tail");
+        Pr_M_head = initProbM("head");
+
+        List<Double> Pr_head = initPr_part_op("head");
+        List<Double> Pr_tail = initPr_part_op("tail");
+        Pr_T_insert = Pr_tail.get(0);
+        Pr_T_delete = Pr_tail.get(1);
+        Pr_T_deleteAndInsert = Pr_tail.get(2);
+
+        Pr_H_insert = Pr_head.get(0);
+        Pr_H_delete = Pr_head.get(1);
+        Pr_H_deleteAndInsert = Pr_head.get(2);
+
 
         encodePasswdLengthTable = probMap2EncodeTable(passwdLengthProbMap);
-        encodeFirst3Table = probMap2EncodeTable(first3ProbMap);
+        encodeFirst5Table = probMap2EncodeTable(first5ProbMap);
 
-//        encodeEvery4Table = probMap2EncodeTable(every4ProbMap);
         encodeIfHdProbTable = probMap2EncodeTable(ifHdProbMap);
         encodeIfHiProbTable = probMap2EncodeTable(ifHiProbMap);
         encodeIfTdProbTable = probMap2EncodeTable(ifTdProbMap);
@@ -170,33 +180,31 @@ public class EncoderTable {
     }
 
 
-
-
     private Map<Integer, Double> initPasswdLengthProbMap() {
         Map<Integer, Double> passwdLengthCount = new LinkedHashMap<>();
-        List<String> pswdsStrings = new ArrayList<>();
-        pswdsWithPII.forEach(pswdsStrings::addAll);
-        pswdsStrings.forEach(s -> {
-            passwdLengthCount.merge(s.length(), 1.0, Double::sum);
-
+        UserVaultSet.forEach(p -> {
+            String passwd_cn = p.getPasswd_CN();
+            String password12306 = p.getPassword12306();
+            passwdLengthCount.merge(passwd_cn.length(), 1.0, Double::sum);
+            passwdLengthCount.merge(password12306.length(), 1.0, Double::sum);
+            String password163 = p.getPassword163();
+            if (password163 != null) {
+                passwdLengthCount.merge(password163.length(), 1.0, Double::sum);
+            }
         });
-//        UserVaultSet.forEach(p -> {
-//            String passwd_cn = p.getPasswd_CN();
-//            String password12306 = p.getPassword12306();
-//            passwdLengthCount.merge(passwd_cn.length(), 1.0, Double::sum);
-//            passwdLengthCount.merge(password12306.length(), 1.0, Double::sum);
-//            String password163 = p.getPassword163();
-//            if (password163!=null) {
-//                passwdLengthCount.merge(password163.length(), 1.0, Double::sum);
-//            }
-//        });
         return calculateFrequency(passwdLengthCount);
     }
 
-    private Map<String, Double> initMkvMap(int mkv) {
-        List<String> pswdsStrings = new ArrayList<>();
-        pswdsWithPII.forEach(pswdsStrings::addAll);
-        return getMkv3(pswdsStrings);
+    private Map<String, Double> initMkvMap() {
+        List<String> passwds = new ArrayList<>();
+        UserVaultSet.forEach(p ->
+        {
+            passwds.add(p.getPasswd_CN());
+            passwds.add(p.getPassword12306());
+            String password163 = p.getPassword163();
+            if (password163 != null) passwds.add(password163);
+        });
+        return getMkv5(passwds);
 //        原始的->拆95^3个Map
 //        生成
 //        遍历生成
@@ -204,43 +212,109 @@ public class EncoderTable {
 //        如果没有->value=lambda
 //        转概率->value=value/写死xxxx
 //
-//        1234:1
-//        1235:2
-//              =>1234:1
-//              =>1235:2
-//        1245:1
     }
 
-    private Map<Integer, Double> initIfHdProbMap() {
-        double prHd = 0.111862836;
-        Map<Integer, Double> ifHdProb = new LinkedHashMap<>();
-        ifHdProb.put(1, prHd);
-        ifHdProb.put(0, 1 - prHd);
-        return ifHdProb;
+    private Map<Integer, Double> initIfOpProbMap(String op) {
+        LongAdder opCount = new LongAdder();
+        LongAdder pathCount = new LongAdder();
+        UserVaultSet.forEach(user -> {
+            String path = user.getPath();
+            pathCount.add(1);
+            if (path.contains(op)) {
+                opCount.add(1);
+            }
+        });
+        double probOp = opCount.doubleValue() / pathCount.doubleValue();
+
+        Map<Integer, Double> ifOpProb = new LinkedHashMap<>();
+        ifOpProb.put(1, probOp);
+        ifOpProb.put(0, 1 - probOp);
+        return ifOpProb;
     }
 
-    private Map<Integer, Double> initIfHiProbMap() {
-        double prHi = 0.04365152919;
-        Map<Integer, Double> ifHiProb = new LinkedHashMap<>();
-        ifHiProb.put(1, prHi);
-        ifHiProb.put(0, 1 - prHi);
-        return ifHiProb;
+    private Double initProbM(String part) {
+        LongAdder opCount = new LongAdder();
+        LongAdder pathCount = new LongAdder();
+        if (part.equals("head")) {
+            UserVaultSet.forEach(user -> {
+                String path = user.getPath();
+                int hd = countOccurrences(path, "hd");
+                int hi = countOccurrences(path, "hi");
+                opCount.add(hd);
+                opCount.add(hi);
+                int totalOpTimes = 0;
+                if (!path.equals("[]")) {
+                    totalOpTimes = path.split(",").length;
+                }
+                pathCount.add(totalOpTimes);
+            });
+        } else {
+//          计算尾部改变
+            UserVaultSet.forEach(user -> {
+                String path = user.getPath();
+                int td = countOccurrences(path, "td");
+                int ti = countOccurrences(path, "ti");
+                opCount.add(td);
+                opCount.add(ti);
+                int totalOpTimes = 0;
+                if (!path.equals("[]")) {
+                    totalOpTimes = path.split(",").length;
+                }
+                pathCount.add(totalOpTimes);
+            });
+        }
+        return opCount.doubleValue() / pathCount.doubleValue();
     }
 
-    private Map<Integer, Double> initIfTdProbMap() {
-        double prTd = 0.1423540315;
-        Map<Integer, Double> ifTdProb = new LinkedHashMap<>();
-        ifTdProb.put(1, prTd);
-        ifTdProb.put(0, 1 - prTd);
-        return ifTdProb;
-    }
-
-    private Map<Integer, Double> initIfTiProbMap() {
-        double prTi = 0.03558850788;
-        Map<Integer, Double> ifTiProb = new LinkedHashMap<>();
-        ifTiProb.put(1, prTi);
-        ifTiProb.put(0, 1 - prTi);
-        return ifTiProb;
+    /**
+     * @param part head or tail
+     * @return insert and delete
+     */
+    private List<Double> initPr_part_op(String part) {
+        LongAdder insert = new LongAdder();
+        LongAdder delete = new LongAdder();
+        LongAdder insert_delete = new LongAdder();
+        LongAdder pathCount = new LongAdder();
+        if (part.equals("head")) {
+            UserVaultSet.forEach(user -> {
+                String path = user.getPath();
+                if (!path.equals("[]")) {
+                    int hd = countOccurrences(path, "hd");
+                    int hi = countOccurrences(path, "hi");
+                    if (hd > 0 && hi == 0) {
+                        delete.add(1);
+                    } else if (hd == 0 && hi > 0) {
+                        insert.add(1);
+                    } else if (hd > 0 && hi > 0) {
+                        insert_delete.add(1);
+                    }
+                    pathCount.add(1);
+                }
+            });
+        } else {
+//          计算尾部改变
+            UserVaultSet.forEach(user -> {
+                String path = user.getPath();
+                if (!path.equals("[]")) {
+                    int td = countOccurrences(path, "td");
+                    int ti = countOccurrences(path, "ti");
+                    if (td > 0 && ti == 0) {
+                        delete.add(1);
+                    } else if (td == 0 && ti > 0) {
+                        insert.add(1);
+                    } else if (td > 0 && ti > 0) {
+                        insert_delete.add(1);
+                    }
+                    pathCount.add(1);
+                }
+            });
+        }
+        List<Double> res = new ArrayList<>(3);
+        double v = pathCount.doubleValue();
+        res.add(insert.doubleValue() / v);
+        res.add(delete.doubleValue() / v);
+        res.add(insert_delete.doubleValue() / v);
+        return res;
     }
 
     private List<Map<String, Double>> initProbMap() {
@@ -256,7 +330,7 @@ public class EncoderTable {
                 path = path.replace("]", "");
                 String[] split = path.split(",");
                 for (String s : split) {
-                    if (s.equals("hd()")||s.equals("hi()")||s.equals("ti()")||s.equals("td()")){
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
                         continue;
                     }
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -280,11 +354,11 @@ public class EncoderTable {
 
         double lambda = 0.01;
         double originSize = opProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambda * 124;
+        double factor = originSize + lambda * 95;
 
-        double factor2 = lambda/factor;
+        double factor2 = lambda / factor;
 
-        opProbMap.replaceAll((op,occurTimes)->(occurTimes+lambda)/factor);
+        opProbMap.replaceAll((op, occurTimes) -> (occurTimes + lambda) / factor);
 
         candidateList.forEach(s -> {
             String s1 = opName + "(" + s + ")";
@@ -310,8 +384,8 @@ public class EncoderTable {
 
     Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap) {
         double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double lambda=1;
-        double factor = originSize+lambda*11;
+        double lambda = 1;
+        double factor = originSize + lambda * 11;
         for (int i = 1; i < 12; i++) {
             if (opTimesMap.containsKey(i)) {
                 opTimesMap.put(i, (opTimesMap.get(i) + lambda) / factor);
@@ -324,8 +398,7 @@ public class EncoderTable {
 
     int calL() {
         double log2 = Math.log(2);
-        double L_min_first3ProbMap = Math.abs(Math.log(Collections.min(first3ProbMap.values())) / log2);
-//        double L_min_every4ProbMap = Math.abs(Math.log(Collections.min(every4ProbMap.values())) / log2);
+        double L_min_first5ProbMap = Math.abs(Math.log(Collections.min(first5ProbMap.values())) / log2);
         double L_min_ifHdProbMap = Math.abs(Math.log(Collections.min(ifHdProbMap.values())) / log2);
         double L_min_ifHiProbMap = Math.abs(Math.log(Collections.min(ifHiProbMap.values())) / log2);
         double L_min_ifTdProbMap = Math.abs(Math.log(Collections.min(ifTdProbMap.values())) / log2);
@@ -339,8 +412,7 @@ public class EncoderTable {
         double L_min_tdOpProbMap = Math.abs(Math.log(Collections.min(tdOpProbMap.values())) / log2);
         double L_min_tiOpProbMap = Math.abs(Math.log(Collections.min(tiOpProbMap.values())) / log2);
         Set<Double> mins = new HashSet<>();
-        mins.add(L_min_first3ProbMap);
-//        mins.add(L_min_every4ProbMap);
+        mins.add(L_min_first5ProbMap);
         mins.add(L_min_ifHdProbMap);
         mins.add(L_min_ifHiProbMap);
         mins.add(L_min_ifTdProbMap);
@@ -376,164 +448,78 @@ public class EncoderTable {
         return frequencyResult;
     }
 
-    Map<String, Double> getMkv3(List<String> passwords) {
+    Map<String, Double> getMkv5(List<String> passwords) {
         Map<String, Double> result = new LinkedHashMap<>();
         for (String password : passwords) {
             if (password != null) {
-                for (int i = 0; i < password.length() - 2; i++) {
-                    String first3 = password.substring(i, i + 3);
-                    result.put(first3, result.getOrDefault(first3, 0.0) + 1.0);
+                for (int i = 0; i < password.length() - 4; i++) {
+                    String first5 = password.substring(i, i + 5);
+                    result.put(first5, result.getOrDefault(first5, 0.0) + 1.0);
                 }
             }
         }
         double originSize = result.values().stream().mapToDouble(Double::doubleValue).sum();
         double lambda = 0.001;
-        double pow = Math.pow(124, 3);
+        double pow = Math.pow(95, 3);
         double factor = originSize + lambda * pow;
         double factor2 = lambda / factor;
 
-        result.replaceAll((first3, times) ->  (times + lambda) / factor);
+        result.replaceAll((first5, times) -> (times + lambda) / factor);
 //        vault.forEach(pswd -> {
 //            if (!result.containsKey(pswd)) {
 //                result.put(pswd, factor2);
 //            }
 //        });
-        generateStrings(3).forEach(s -> result.putIfAbsent(s, factor2));
+        generateStrings().forEach(s -> result.putIfAbsent(s, factor2));
 //        System.out.println(result);
         return result;
     }
 
-    HashMap<String, HashMap<String, Double>> getMkv4(List<String> passwords) {
-//        Map<String, Double> map2 = new LinkedHashMap<>();
+    HashMap<String, HashMap<String, Double>> getMkv6(List<String> passwords) {
         HashMap<String, HashMap<String, Double>> result = new LinkedHashMap<>();
         for (String password : passwords) {
             if (password != null) {
-                for (int i = 0; i < password.length() - 3; i++) {
-                    String substring = password.substring(i, i + 4);
-                    String prefix = substring.substring(0, 3);
-                    String target = substring.substring(3, 4);
+                for (int i = 0; i < password.length() - 5; i++) {
+                    String substring = password.substring(i, i + 6);
+                    String prefix = substring.substring(0, 5);
+                    String target = substring.substring(5, 6);
 
-                    HashMap<String, Double> mkv4 = result.computeIfAbsent(prefix, k -> new LinkedHashMap<>());
-                    mkv4.put(target, mkv4.getOrDefault(target, 0.0) + 1.0);
-                    result.put(prefix, mkv4);
+                    HashMap<String, Double> mkv6 = result.computeIfAbsent(prefix, k -> new LinkedHashMap<>());
+                    mkv6.put(target, mkv6.getOrDefault(target, 0.0) + 1.0);
+                    result.put(prefix, mkv6);
                 }
             }
         }
         // Apply Laplace smoothing
-        double lambda = 0.01;
+        double lambda = 0.001;
 
         result.forEach((prefix, map) -> {
             double originSize = map.values().stream().mapToDouble(Double::doubleValue).sum();
-            double smoothFactor = lambda / (originSize + lambda * 124);
-            map.replaceAll((suffix, times) -> ((times+lambda) / (originSize + lambda * 124)));
+            double smoothFactor = lambda / (originSize + lambda * 95);
+            map.replaceAll((suffix, times) -> ((times + lambda) / (originSize + lambda * 95)));
             candidateList.forEach(s -> map.putIfAbsent(s, smoothFactor));
         });
 
-//        first3ProbMap.keySet().forEach(prefix -> result.putIfAbsent(prefix, null));
-
-//            double factor = originSize + lambda * pow;
-//            map.replaceAll((charAt4, times) -> (times + lambda) / factor);
-
-//            map.replaceAll((charAt4, times)->(charAt4,(times + lambda) / factor)));
-//            map.forEach((charAt4, prob) -> map.put(charAt4, (prob + lambda) / factor));
-//            for (char aChar : chars) {
-//                String key = String.valueOf(aChar);
-//                if (!map.containsKey(key)) {
-//                    map.put(key, factor2);
-//                }
-//            }
-//        });
-//        vault.forEach(pswd->{
-//            if (!result.containsKey(pswd)) {
-//
-//            }
-//        });
-
-
-//        HashMap<String, Double> tmp = new LinkedHashMap<>();
-//        for (char aChar : chars) tmp.put(String.valueOf(aChar), factor2);
-//        generateStrings(3).forEach(s -> result.putIfAbsent(s, new HashMap<>(tmp)));
-
-//        for (Map.Entry<String, HashMap<String, Double>> entry : result.entrySet()) {
-//            String first3 = entry.getKey();
-//            HashMap<String, Double> prob4Map = entry.getValue();
-//
-//            for (Map.Entry<String, Double> prob4 : prob4Map.entrySet()) {
-//                String combinedKey = first3 + prob4.getKey();
-//                Double prob = prob4.getValue();
-//                map2.put(combinedKey, prob);
-//            }
-//        }
         return result;
-//        return map2;
     }
 
-//    public String saveMkv4(List<String> passwords) {
-//        Map<String, Double> map2 = new LinkedHashMap<>();
-//        HashMap<String, HashMap<String, Double>> result = new LinkedHashMap<>();
-//        for (String password : passwords) {
-//            if (password != null) {
-//                for (int i = 0; i < password.length() - 3; i++) {
-//                    String substring = password.substring(i, i + 4);
-//                    String prefix = substring.substring(0, 3);
-//                    String target = substring.substring(3, 4);
-//
-//                    HashMap<String, Double> mkv4 = result.computeIfAbsent(prefix, k -> new LinkedHashMap<>());
-//                    mkv4.put(target, mkv4.getOrDefault(target, 0.0) + 1.0);
-//                    result.put(prefix, mkv4);
-//                }
-//            }
-//        }
-//        // Apply Laplace smoothing
-//        double lambda = 0.01;
-//        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-//        String signs = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ";
-//        characters += signs;
-//        final char[] chars = characters.toCharArray();
-//        double pow = Math.pow(95, 3);
-//        double factor2 = 1 / pow;
-//        result.forEach((prefix, map) -> {
-//            double originSize = map.values().stream().mapToDouble(Double::doubleValue).sum();
-//            double factor = originSize + lambda * pow;
-//            map.replaceAll((charAt4, times) -> (times + lambda) / factor);
-//
-//            for (char aChar : chars) {
-//                String key = String.valueOf(aChar);
-//                map.putIfAbsent(key, factor2);
-//            }
-//
-//        });
-//
-//
-//        for (Map.Entry<String, HashMap<String, Double>> entry : result.entrySet()) {
-//            String first3 = entry.getKey();
-//            HashMap<String, Double> prob4Map = entry.getValue();
-//
-//            for (Map.Entry<String, Double> prob4 : prob4Map.entrySet()) {
-//                String combinedKey = first3 + prob4.getKey();
-//                Double prob = prob4.getValue();
-//                map2.put(combinedKey, prob);
-//            }
-//        }
-//
-//        Map<String, MkvTableLine> encodeTable = mkvProbMap2EncodeTable(map2);
-//        encodeTable.forEach((string, line) -> tableLineRepo.save(line));
-//        return "s";
-//    }
-
-    Set<String> generateStrings(int length) {
+    Set<String> generateStrings() {
         Set<String> res = new HashSet<>();
-        if (length == 3) {
-            for (String s : candidateList) {
-                for (String value : candidateList) {
-                    for (String item : candidateList) {
-                        String generatedString =
-                                "" + s + value + item;
-                        res.add(generatedString);
+
+        for (String s : candidateList) {
+            for (String value1 : candidateList) {
+                for (String value2 : candidateList) {
+                    for (String value3 : candidateList) {
+                        for (String value4 : candidateList) {
+                            String generatedString =
+                                    "" + s + value1 + value2 + value3 + value4;
+                            res.add(generatedString);
+                        }
                     }
                 }
             }
         }
+
         return res;
     }
 
@@ -553,50 +539,16 @@ public class EncoderTable {
         return encodeTable;
     }
 
-//    public EncodeTableLine<String> laplaceMkv4(String pswd) {
-//        String closestString = encodeEvery4Table.keySet().stream()
-//                .min(Comparator.comparingInt(key -> calculateAsciiDistance(key, pswd)))
-//                .orElse("aaaa");
-//        double preUpperBound = encodeEvery4Table.get(closestString).getUpperBound();
-//        int dist = calculateAsciiDistance(closestString, pswd);
-//        double pow = Math.pow(95, 3);
-//        double secureParam = Math.pow(2, secParam_L);
-//        double upperBound = (preUpperBound + dist * (1 / pow) * secureParam);
-//        double lowerBound = (upperBound - dist * (1 / pow) * secureParam);
-//        EncodeTableLine<String> lapLaceLine =
-//                EncodeTableLine.<String>builder().prob(0.01).originValue(pswd).upperBound(upperBound).lowerBound
-//                (lowerBound).build();
-//        encodeEvery4Table.put(pswd, lapLaceLine);
-//        return lapLaceLine;
-//
-//    }
+    private int countOccurrences(String input, String substring) {
+        int count = 0;
+        int index = 0;
 
-    int calculateAsciiDistance(String str1, String str2) {
-        int distance = 0;
-        for (int i = 0; i < str1.length(); i++) {
-            int ascii1 = str1.charAt(i);
-            int ascii2 = str2.charAt(i);
-            distance += Math.abs(ascii1 - ascii2);
+        while ((index = input.indexOf(substring, index)) != -1) {
+            count++;
+            index += substring.length();
         }
-        return distance;
-    }
 
-//    Map<String,Double> mkv4TestSetAdd(Map<String,Double> mkv4Map,List<PasswdPath> passwdPaths) {
-//        // 只有mkv4的平滑
-//        final double pow = 1/Math.pow(95, 3);
-//
-//        List<String> pswds = new ArrayList<>();
-//        passwdPaths.forEach(passwdPath -> {
-//            pswds.add(passwdPath.getPasswd_CN());
-//            pswds.add(passwdPath.getPassword12306());
-//        });
-//        pswds.forEach(pswd->{
-//            for (int i = 0; i < pswd.length()-3; i++) {
-//                String mkv4String = pswd.substring(i, i + 3);
-//                mkv4Map.putIfAbsent(mkv4String, pow);
-//            }
-//        });
-//        return mkv4Map;
-//    }
+        return count;
+    }
 
 }
