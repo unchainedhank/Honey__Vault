@@ -1,4 +1,4 @@
-package com.example.honeyvault.paper23_list_version;
+package com.example.honeyvault.chinese.paper23_list_version;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -11,16 +11,14 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableList {
+public class EncoderTableListCN {
 
     Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;

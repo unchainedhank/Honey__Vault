@@ -1,4 +1,4 @@
-package com.example.honeyvault.paper19;
+package com.example.honeyvault.english.paper19;
 
 import cn.hutool.core.lang.Pair;
 import com.example.honeyvault.data_access.EncodeLine;
@@ -17,12 +17,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderDecoderWithoutPII {
+public class EncoderDecoderWithoutPIIENG {
 
 //    double alpha;
 
     @Resource
-    private EncoderTableWithoutPII encoderTableWithourPII;
+    private EncoderTableWithoutPIIENG encoderTableWithourPII;
 
     private Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new HashMap<>();
 
@@ -600,10 +600,10 @@ public class EncoderDecoderWithoutPII {
                     BigDecimal bottom = p1.multiply(pow);
                     BigDecimal top = new BigDecimal(encodedfirstMkv).subtract(new BigDecimal(kNPlus1));
                     BigInteger lowerBound =
-                            new BigDecimal(kNPlus1).add(top.divide(bottom, 0, RoundingMode.FLOOR)
+                            new BigDecimal(kNPlus1).add(top.divide(bottom, 40, RoundingMode.FLOOR)
                                     .multiply(bottom)).toBigInteger();
                     BigInteger upperBound =
-                            new BigDecimal(kNPlus1).add(top.divide(bottom, 0, RoundingMode.FLOOR).add(BigDecimal.valueOf(1))
+                            new BigDecimal(kNPlus1).add(top.divide(bottom, 40, RoundingMode.FLOOR).add(BigDecimal.valueOf(1))
                                     .multiply(bottom)).toBigInteger();
                     String randomStr = genRandomStr();
                     while (encoderTableWithourPII.encodeFirstMkvTable.containsKey(randomStr)) {
@@ -639,7 +639,8 @@ public class EncoderDecoderWithoutPII {
                 }
                 originPswd.add(decodedPswd.toString());
                 System.out.println(originPswd);
-            } else {
+            }
+            else {
                 BigInteger encodedG = new BigInteger(encodeElementList.get(0), 2);
                 int g = 0;
                 boolean found = false;

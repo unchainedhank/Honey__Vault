@@ -1,4 +1,4 @@
-spring:
+#spring:
 #  datasource:
 #    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@127.0.0.1:1521:XE}
 #    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@oracle11g:1521:XE}
@@ -12,4 +12,5 @@ spring:
 #      show_sql: true
 #      format_sql: true
 #      flushMode: Auto
-
+server:
+  port: 1397

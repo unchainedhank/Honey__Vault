@@ -1,4 +1,4 @@
-package com.example.honeyvault.paper23_markov_version;
+package com.example.honeyvault.chinese.paper23_markov_version;
 
 import com.example.honeyvault.data_access.*;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -16,7 +16,7 @@ import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableMarkov {
+public class EncoderTableMarkovCN {
 
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> firstMkvProbMap;

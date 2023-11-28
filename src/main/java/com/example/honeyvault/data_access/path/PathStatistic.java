@@ -14,8 +14,7 @@ import java.util.*;
 public class PathStatistic {
     public Set<PathAndAlphaUser> parsePswds() {
         CsvReader reader = CsvUtil.getReader();
-        CsvData data = reader.read(FileUtil.file("/Users/a3/IdeaProjects/HoneyVault/src/main/resources" +
-                "/t_12306_163_replace.csv"));
+        CsvData data = reader.read(FileUtil.file("/app/classes/static/t_12306_163_replace.csv"));
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
         for (int i = 1; i < 91243; i++) {
@@ -39,12 +38,11 @@ public class PathStatistic {
 
     public Set<PathAndAlphaUser> parsePswdsWithoutPII() {
         CsvReader reader = CsvUtil.getReader();
-        CsvData data = reader.read(FileUtil.file("/Users/a3/IdeaProjects/HoneyVault/src/main/resources" +
-                "/t_12306_163.csv"));
+        CsvData data = reader.read(FileUtil.file("/app/classes/static/t_12306_163.csv"));
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
-//        for (int i = 1; i < 91226; i++) {
-        for (int i = 1; i < 9122; i++) {
+        for (int i = 1; i < 91226; i++) {
+//        for (int i = 1; i < 9122; i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
             String p1 = rawList.get(4);
@@ -98,8 +96,7 @@ public class PathStatistic {
 
     public List<Integer> getDecoyVaultData() {
         CsvReader reader = CsvUtil.getReader();
-        CsvData data = reader.read(FileUtil.file("/Users/a3/IdeaProjects/HoneyVault/src/main/resources" +
-                "/chinese_merge_noUN.csv"));
+        CsvData data = reader.read(FileUtil.file("/app/classes/static/chinese_merge_noUN.csv"));
         List<CsvRow> rows = data.getRows();
         List<Integer> result = new ArrayList<>();
         for (int i = 1; i < 91595; i++) {

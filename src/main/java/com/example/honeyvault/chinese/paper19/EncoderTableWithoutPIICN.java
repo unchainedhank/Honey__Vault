@@ -1,4 +1,4 @@
-package com.example.honeyvault.paper19;
+package com.example.honeyvault.chinese.paper19;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.LongAdder;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTableWithoutPII {
+public class EncoderTableWithoutPIICN {
     /*
     1. g(dynamic)
     2. length
@@ -97,8 +97,6 @@ public class EncoderTableWithoutPII {
     public Map<String, EncodeLine<String>> prMTable = new HashMap<>();
     public Map<String, EncodeLine<String>> prTOpTable = new HashMap<>();
     public Map<String, EncodeLine<String>> prHOpTable = new HashMap<>();
-
-    public Map<String, EncodeLine<String>> pr_x_opTable = new HashMap<>();
 
     int secParam_L;
     List<String> candidateList;
