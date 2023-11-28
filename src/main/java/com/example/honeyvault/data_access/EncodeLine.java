@@ -3,6 +3,8 @@ package com.example.honeyvault.data_access;
 import lombok.*;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 @Data
 @AllArgsConstructor
@@ -12,6 +14,7 @@ import java.io.Serializable;
 public class EncodeLine<T> implements Serializable {
     T originValue;
     Double prob;
-    double lowerBound = 0;
-    double upperBound;
+    BigInteger lowerBound = BigInteger.valueOf(0);
+    BigInteger upperBound;
+
 }

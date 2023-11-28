@@ -1,55 +1,47 @@
-package com.example.honeyvault.tool;
+package com.example.honeyvault.paper23_markov_version;
 
 import cn.hutool.core.lang.Pair;
-import cn.hutool.core.math.MathUtil;
 import com.example.honeyvault.data_access.EncodeLine;
-import com.example.honeyvault.data_access.PasswdPath;
-import com.example.honeyvault.data_access.PathRepo;
+import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.tool.CalPath;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderDecoder {
+public class EncoderDecoderMarkov {
 
-    private static List<PasswdPath> UserVaultSet;
-    private static double alpha;
-
-    @Resource
-    private PathRepo repo;
-    @Resource
-    private EncoderTable encoderTable;
+//    double alpha;
 
     @Resource
-    PreProcess preProcessor;
+    private EncoderTableMarkov encoderTableMarkov;
 
-    @PostConstruct
-    public void initVault() {
-        UserVaultSet = repo.findAll();
+
+    public void init(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
+        encoderTableMarkov.buildEncodeTables(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
     }
 
-    @PostConstruct
-    public void initAlpha() {
-        alpha = calAlpha();
-    }
+//    @PostConstruct
+//    public void initAlpha() {
+//        alpha = calAlpha();
+//    }
 
-    public List<Pair<String, String>> encode(List<String> initVault,int fixedLength) {
-        encoderTable.buildEncodeTables();
+    public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, int mkv, double lambdaOp,
+                                             double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
+        encoderTableMarkov.buildEncodeTables(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
         List<String> vault = initVault(initVault);
         Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
         List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
         String firstPswd = vault.get(1);
-        String encodeFirstPswd = algo4(0, firstPswd, firstPswd);
+        String encodeFirstPswd = algo4(0, firstPswd, firstPswd, mkv);
         encodeFirstPswd = fillWithRandom(encodeFirstPswd, fixedLength);
         pswd2EncodeString.add(new Pair<>(firstPswd, encodeFirstPswd));
 
@@ -59,77 +51,35 @@ public class EncoderDecoder {
                 String pwi1 = vault.get(i);
                 String pwi = vault.get(j);
 
-                double A = (1 - f_fit(i)) / (i-1);
-                double B = f_fit(i);
-                double pr2 = B * getMarkovProb(vault.get(i));
+                double A = f_fit(i) / i;
+                double B = 1 - f_fit(i);
+                double pr2 = B * getMarkovProb(vault.get(i), mkv);
                 pathProbMap.put(new Pair<>(i, i), pr2);
 
-                if (!pwi.equals(pwi1)) {
-                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-                    double pr_ssm = calPr_ssm(paths);
-                    double pr1 = ((1 - (i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha)) * A * pr_ssm;
-                    pathProbMap.put(new Pair<>(i, j), pr1);
-                }
-//                  如果两个口令相似度太低
-                else {
-                    pathProbMap.put(new Pair<>(i, j), ((i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha) * A);
-                }
+                double pr1 = 0;
+                double pr1j;
 
-//                if (CalPath.findLongestCommonSubstring(pwi1, pwi).length() >=
-//                        0.5 * Math.max(pwi1.length(), pwi.length())) {
-//                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-//                    double pr_ssm = calPr_ssm(paths);
-//                    double pr1 = ((1 - (i - 1) * alpha) / ((i - 1) * alpha + 1 - alpha))*A * pr_ssm;
-//                    pathProbMap.put(new Pair<>(i, j), pr1);
-//////                if (JaccardSimilarity(pwi, pwi1) > 0.3 || LevenshteinSim(pwi1, pwi) > 0.3) {
-//////                      计算pw_i+1的pr2
-////                    pathProbMap.put(new Pair<>(i, i), pr2);
-//////                      如果两个口令不一样
-////                    if (!pwi1.equals(pwi)) {
-//////                          计算所有可能的路径
-////                        List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-////                        double pr_ssm = calPr_ssm(paths);
-////                        double pr1 = (1 - (i * alpha) / (i * alpha + 1 - alpha)) * A * pr_ssm;
-////                        pathProbMap.put(new Pair<>(i, j), pr1);
-////                    }
-//////                      如果两个口令一样
-////                    else {
-//////                      pwi->pw_i+1的 pr1为alpha
-////                        pathProbMap.put(new Pair<>(i, j), (i * alpha) / (i * alpha + 1 - alpha) * A);
-////                    }
-//
-//                }
-////                  如果两个口令相似度太低
-//                else {
-////                  pwi->pw_i+1的 pr1为0
-//                    pathProbMap.put(new Pair<>(i, j), 0.0);
-//                }
+                List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
+                double pr_ssm = calPr_ssm(paths);
+                pr1j = A * pr_ssm;
+                pathProbMap.put(new Pair<>(i, j), pr1j);
+                pr1 = pr1 + pr1j;
             }
         }
-//          根据概率选择一个base口令
-//          pw_i+1->pwi
-//          修改：Key-Value顺序
-//      选择一个唯一的路径
         Map<Integer, Integer> pwi1ToPwi = selectUniquei2(pathProbMap);
-//        第一个密码
-//      直接编码 map->table
-
         pwi1ToPwi.forEach((pwi1Index, pwiIndex) -> {
             System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
             System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
-//              确定g
             int g;
             if (pwi1Index.equals(pwiIndex)) g = 0;
-//              g=i'
             else g = pwiIndex;
-//              index=i'
-
             System.out.println("g" + ":" + g);
             System.out.println("index" + ":" + pwiIndex);
             Pair<Double, Double> gBound = gEncoder(g, pwi1Index);
-            BigDecimal gDecimal = getRandomValue(gBound.getKey(), gBound.getValue());
-            String encodedG = toBinaryString(gDecimal, encoderTable.secParam_L);
-            String encodeString = algo4(g, vault.get(pwiIndex), vault.get(pwi1Index));
+            BigInteger gDecimal = getRandomValue(BigDecimal.valueOf(gBound.getKey()).toBigInteger(),
+                    BigDecimal.valueOf(gBound.getValue()).toBigInteger());
+            String encodedG = toBinaryString(gDecimal, encoderTableMarkov.secParam_L);
+            String encodeString = algo4(g, vault.get(pwiIndex), vault.get(pwi1Index), mkv);
             System.out.println("encoded string" + ":" + encodeString);
 
             encodeString = encodedG + encodeString;
@@ -142,52 +92,45 @@ public class EncoderDecoder {
     }
 
     public static double f_fit(int i) {
-        i = i - 1;
-        double i2 = Math.pow(i, 2);
-        double i3 = Math.pow(i, 3);
-        return 1 / (0.02455 * i3 - 0.2945 * i2 + 3.409 * i + 0.0852);
+        return 1 / (1 + Math.exp(-1.525 * i + 2.522));
     }
 
-    private double calAlpha() {
-        List<Double> alphaList = new ArrayList<>();
-        UserVaultSet = repo.findAll();
-        UserVaultSet.forEach(p -> {
-            double alpha;
-            String password12306 = p.getPassword12306();
-            String passwdCn = p.getPasswd_CN();
-            List<String> passwds = new ArrayList<>();
-            passwds.add(password12306);
-            passwds.add(passwdCn);
-            Map<String, Integer> freqMap = new HashMap<>();
-            for (String pswd : passwds) {
-                freqMap.put(pswd, freqMap.getOrDefault(pswd, 0) + 1);
-            }
-            long deno = MathUtil.combinationCount(passwds.size(), 2);
-            double totalCombinations = 0;
-            for (int count : freqMap.values()) {
-                if (count >= 2) {
-                    totalCombinations += MathUtil.combinationCount(count, 2);
-                }
-            }
-            if (totalCombinations == 0) {
-                alpha = 0;
-            } else {
-                alpha = totalCombinations / deno;
-            }
-            alphaList.add(alpha);
-        });
-        return alphaList.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-    }
+//    private double calAlpha() {
+//        Set<PathAndAlphaUser> pathAndAlphaUsers = pathStatistic.parsePswds();
+//        List<Double> alphaList = new ArrayList<>();
+//        pathAndAlphaUsers.forEach(p -> {
+//            double alpha;
+//            List<String> passwds = p.getPswdList();
+//            Map<String, Integer> freqMap = new HashMap<>();
+//            for (String pswd : passwds) {
+//                freqMap.put(pswd, freqMap.getOrDefault(pswd, 0) + 1);
+//            }
+//            long deno = MathUtil.combinationCount(passwds.size(), 2);
+//            double totalCombinations = 0;
+//            for (int count : freqMap.values()) {
+//                if (count >= 2) {
+//                    totalCombinations += MathUtil.combinationCount(count, 2);
+//                }
+//            }
+//            if (totalCombinations == 0) {
+//                alpha = 0;
+//            } else {
+//                alpha = totalCombinations / deno;
+//            }
+//            alphaList.add(alpha);
+//        });
+//        return alphaList.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//    }
 
     private Pair<Double, Double> gEncoder(int g, int i) {
-        double L = encoderTable.secParam_L;
+        double L = encoderTableMarkov.secParam_L;
         double pow = Math.pow(2, L);
         double col2;
         double lower = 0, upper;
         if (g == 0) {
             upper = Math.floor(pow * f_fit(i));
         } else {
-            col2 = (1 - f_fit(i)) / (i-1);
+            col2 = (1 - f_fit(i)) / (i - 1);
             lower = Math.floor(((f_fit(i) + col2 * (g - 1)) * pow));
             upper = Math.floor(((f_fit(i) + col2 * g) * pow));
         }
@@ -196,84 +139,83 @@ public class EncoderDecoder {
     }
 
 
-    private String algo4(int g, String basePasswd, String targetString) {
+    private String algo4(int g, String basePasswd, String targetString, int mkv) {
         StringBuilder encodeString = new StringBuilder();
-        double fixedLength = encoderTable.secParam_L;
+        double fixedLength = encoderTableMarkov.secParam_L;
         if (g == 0) {
 //          编码长度
             EncodeLine<Integer> lengthEncodeLine =
-                    encoderTable.encodePasswdLengthTable.get(targetString.length());
-            BigDecimal encodeValue = getRandomValue(lengthEncodeLine.getLowerBound(),
+                    encoderTableMarkov.encodePasswdLengthTable.get(targetString.length());
+            BigInteger encodeValue = getRandomValue(lengthEncodeLine.getLowerBound(),
                     lengthEncodeLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
-//          编码头3个字符
-            String first3String = targetString.substring(0, 3);
-            EncodeLine<String> first3EncodeLine =
-                    encoderTable.encodeFirst3Table.get(first3String);
-            encodeValue = getRandomValue(first3EncodeLine.getLowerBound(),
-                    first3EncodeLine.getUpperBound());
+//          编码头mkv个字符
+            String firstMkvString = targetString.substring(0, mkv);
+            EncodeLine<String> firstMkvEncodeLine =
+                    encoderTableMarkov.encodefirstMkvTable.get(firstMkvString);
+            encodeValue = getRandomValue(firstMkvEncodeLine.getLowerBound(),
+                    firstMkvEncodeLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
 
-//          编码每第4个字符
+//          编码每第mkv_1个字符
             Map<String, EncodeLine<String>> encodeMap;
-            for (int j = 0; j + 3 < targetString.length(); j++) {
-                String window = targetString.substring(j, j + 4);
+            int mkv_1 = mkv + 1;
+            for (int j = 0; j + mkv < targetString.length(); j++) {
+                String window = targetString.substring(j, j + mkv_1);
                 if (j == 0) {
-                    encodeMap = encoderTable.encodeEvery4Table.get(first3String);
+                    encodeMap = encoderTableMarkov.encodeEveryMkv_1Table.get(firstMkvString);
                 } else {
-                    String prefix = window.substring(0, 3);
-                    encodeMap = encoderTable.encodeEvery4Table.get(prefix);
+                    String prefix = window.substring(0, mkv);
+                    encodeMap = encoderTableMarkov.encodeEveryMkv_1Table.get(prefix);
                 }
                 String suffix = window.substring(window.length() - 1);
 
                 EncodeLine<String> encodeLine;
                 if (encodeMap == null) {
-                    encodeLine = encoderTable.absentMkv4Table.get(suffix);
+                    encodeLine = encoderTableMarkov.absentMkv_1Table.get(suffix);
                 } else {
                     encodeLine = encodeMap.get(suffix);
                 }
-
-
                 encodeValue = getRandomValue(encodeLine.getLowerBound(),
                         encodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
             }
         } else {
-            BigDecimal encodeValue;
+            BigInteger encodeValue;
 //          找到所有可能的路径
             List<List<String>> paths = CalPath.breadthFirstSearch(basePasswd, targetString);
-            Map<String, Double> pathProbMap = new ConcurrentHashMap<>();
+            Map<List<String>, Double> pathProbMap = new ConcurrentHashMap<>();
 //          路径->概率
             paths.forEach(path -> {
-                double pathProb = getPathProb(path.toString());
-                pathProbMap.put(path.toString(), pathProb);
+                double pathProb = getEncodePathProb(path);
+                pathProbMap.put(path, pathProb);
             });
 //          根据概率选择路径
-            String selectedPath = selectPathByProbability(pathProbMap);
+            List<String> selectedOpList = selectPathByProbability(pathProbMap);
+            String selectedPath = selectedOpList.toString();
 //          编码路径
             selectedPath = selectedPath.trim().replace("[", "");
             selectedPath = selectedPath.trim().replace("]", "");
-            String[] ops = selectedPath.split(",");
 //          1.编码ifOp
-            EncodeLine<Integer> ifHdLine = encoderTable.encodeIfHdProbTable.get(selectedPath.contains("hd") ? 1
+            EncodeLine<Integer> ifHdLine = encoderTableMarkov.encodeIfHdProbTable.get(selectedPath.contains("hd") ? 1
                     : 0);
             encodeValue = getRandomValue(ifHdLine.getLowerBound(),
                     ifHdLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
 
-            EncodeLine<Integer> ifHiLine = encoderTable.encodeIfHiProbTable.get(selectedPath.contains("hi") ? 1
+            EncodeLine<Integer> ifHiLine = encoderTableMarkov.encodeIfHiProbTable.get(selectedPath.contains("hi") ? 1
                     : 0);
             encodeValue = getRandomValue(ifHiLine.getLowerBound(),
                     ifHiLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
 
-            EncodeLine<Integer> ifTdLine = encoderTable.encodeIfTdProbTable.get(selectedPath.contains("td") ? 1
+            EncodeLine<Integer> ifTdLine = encoderTableMarkov.encodeIfTdProbTable.get(selectedPath.contains("td") ? 1
                     : 0);
             encodeValue = getRandomValue(ifTdLine.getLowerBound(),
                     ifTdLine.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
 
-            EncodeLine<Integer> ifTiLine = encoderTable.encodeIfTiProbTable.get(selectedPath.contains("ti") ? 1
+            EncodeLine<Integer> ifTiLine = encoderTableMarkov.encodeIfTiProbTable.get(selectedPath.contains("ti") ? 1
                     : 0);
             encodeValue = getRandomValue(ifTiLine.getLowerBound(),
                     ifTiLine.getUpperBound());
@@ -281,7 +223,7 @@ public class EncoderDecoder {
 //          2.编码opTimes
             int hdTimes = countOccurrencesOfOp(selectedPath, "hd");
             if (hdTimes != 0) {
-                EncodeLine<Integer> hdTimesEncodeLine = encoderTable.encodeHdTimesProbTable.get(hdTimes);
+                EncodeLine<Integer> hdTimesEncodeLine = encoderTableMarkov.encodeHdTimesProbTable.get(hdTimes);
                 encodeValue = getRandomValue(hdTimesEncodeLine.getLowerBound(),
                         hdTimesEncodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
@@ -290,7 +232,7 @@ public class EncoderDecoder {
 
             int hiTimes = countOccurrencesOfOp(selectedPath, "hi");
             if (hiTimes != 0) {
-                EncodeLine<Integer> hiTimesEncodeLine = encoderTable.encodeHiTimesProbTable.get(hiTimes);
+                EncodeLine<Integer> hiTimesEncodeLine = encoderTableMarkov.encodeHiTimesProbTable.get(hiTimes);
                 encodeValue = getRandomValue(hiTimesEncodeLine.getLowerBound(),
                         hiTimesEncodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
@@ -299,7 +241,7 @@ public class EncoderDecoder {
 
             int tdTimes = countOccurrencesOfOp(selectedPath, "td");
             if (tdTimes != 0) {
-                EncodeLine<Integer> tdTimesEncodeLine = encoderTable.encodeTdTimesProbTable.get(tdTimes);
+                EncodeLine<Integer> tdTimesEncodeLine = encoderTableMarkov.encodeTdTimesProbTable.get(tdTimes);
                 encodeValue = getRandomValue(tdTimesEncodeLine.getLowerBound(),
                         tdTimesEncodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
@@ -308,35 +250,35 @@ public class EncoderDecoder {
 
             int tiTimes = countOccurrencesOfOp(selectedPath, "ti");
             if (tiTimes != 0) {
-                EncodeLine<Integer> tiTimesEncodeLine = encoderTable.encodeTiTimesProbTable.get(tiTimes);
+                EncodeLine<Integer> tiTimesEncodeLine = encoderTableMarkov.encodeTiTimesProbTable.get(tiTimes);
                 encodeValue = getRandomValue(tiTimesEncodeLine.getLowerBound(),
                         tiTimesEncodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
             }
 
 //          3.编码op
-            for (String op : ops) {
+            for (String op : selectedOpList) {
                 op = op.trim();
                 if (op.contains("hd")) {
-                    EncodeLine<String> hdOpEncodeLine = encoderTable.encodeHdOpProbTable.get(op);
+                    EncodeLine<String> hdOpEncodeLine = encoderTableMarkov.encodeHdOpProbTable.get(op);
                     encodeValue = getRandomValue(hdOpEncodeLine.getLowerBound(),
                             hdOpEncodeLine.getUpperBound());
                     encodeString.append(toBinaryString(encodeValue, fixedLength));
                 }
                 if (op.contains("hi")) {
-                    EncodeLine<String> hiOpEncodeLine = encoderTable.encodeHiOpProbTable.get(op);
+                    EncodeLine<String> hiOpEncodeLine = encoderTableMarkov.encodeHiOpProbTable.get(op);
                     encodeValue = getRandomValue(hiOpEncodeLine.getLowerBound(),
                             hiOpEncodeLine.getUpperBound());
                     encodeString.append(toBinaryString(encodeValue, fixedLength));
                 }
                 if (op.contains("ti")) {
-                    EncodeLine<String> tiOpEncodeLine = encoderTable.encodeTiOpProbTable.get(op);
+                    EncodeLine<String> tiOpEncodeLine = encoderTableMarkov.encodeTiOpProbTable.get(op);
                     encodeValue = getRandomValue(tiOpEncodeLine.getLowerBound(),
                             tiOpEncodeLine.getUpperBound());
                     encodeString.append(toBinaryString(encodeValue, fixedLength));
                 }
                 if (op.contains("td")) {
-                    EncodeLine<String> tdOpEncodeLine = encoderTable.encodeTdOpProbTable.get(op);
+                    EncodeLine<String> tdOpEncodeLine = encoderTableMarkov.encodeTdOpProbTable.get(op);
                     encodeValue = getRandomValue(tdOpEncodeLine.getLowerBound(),
                             tdOpEncodeLine.getUpperBound());
                     encodeString.append(toBinaryString(encodeValue, fixedLength));
@@ -347,62 +289,90 @@ public class EncoderDecoder {
     }
 
     //  cal method
-    private double getMarkovProb(String passwd) {
+    private double getMarkovProb(String passwd, int mkv) {
         // g=0
-        Double lengthProb = encoderTable.passwdLengthProbMap.get(passwd.length());
-        Double first3Prob = encoderTable.first3ProbMap.get(passwd.substring(0, 3));
-        double finalProb = lengthProb * first3Prob;
-        for (int i = 0; i + 3 < passwd.length(); i++) {
-            String window = passwd.substring(i, i + 4);
-            String prefix = window.substring(0, 3);
+        Double lengthProb = encoderTableMarkov.passwdLengthProbMap.get(passwd.length());
+        Double firstMkvProb = encoderTableMarkov.firstMkvProbMap.get(passwd.substring(0, mkv));
+        double finalProb = lengthProb * firstMkvProb;
+        int mkv_1 = mkv + 1;
+        for (int i = 0; i + mkv < passwd.length(); i++) {
+            String window = passwd.substring(i, i + mkv_1);
+            String prefix = window.substring(0, mkv);
             String suffix = window.substring(window.length() - 1);
-            HashMap<String, Double> suffixProb = encoderTable.every4ProbMap.get(prefix);
-            Double mkv4Prob;
-            //                mkv4Prob = encoderTable.absentMkv4Table.get(suffix);
-            //                1/124
+            HashMap<String, Double> suffixProb = encoderTableMarkov.everyMkv_1ProbMap.get(prefix);
+            Double mkv_1Prob;
             if (suffixProb == null) {
-                mkv4Prob = encoderTable.absentMkv4ProbMap.getOrDefault(suffix, 0.008064516129);
+                mkv_1Prob = encoderTableMarkov.absentMkv_1ProbMap.getOrDefault(suffix, 0.008064516129);
             } else {
-                mkv4Prob = suffixProb.getOrDefault(suffix, 0.008064516129);
+                mkv_1Prob = suffixProb.getOrDefault(suffix, 0.008064516129);
             }
-            finalProb *= mkv4Prob;
+            finalProb *= mkv_1Prob;
         }
         return finalProb;
     }
 
-    private double getPathProb(String path) {
-        if (path != null && !path.equals("[]")) {
-            path = path.replace("[", "");
-            path = path.replace("]", "");
-            String[] split = path.split(",");
+    private double getPathProb(List<String> path) {
+        if (path != null && path.size() > 0) {
+
             double prob = 1;
-            for (String op : split) {
+            for (String op : path) {
                 op = op.trim();
-                if (op.contains("hd")) prob *= encoderTable.hdOpProbMap.get(op);
-                else if (op.contains("hi")) prob *= encoderTable.hiOpProbMap.get(op);
-                else if (op.contains("td")) prob *= encoderTable.tdOpProbMap.get(op);
-                else if (op.contains("ti")) prob *= encoderTable.tiOpProbMap.get(op);
+                if (op.contains("hd")) prob *= encoderTableMarkov.hdOpProbMap.get(op);
+                else if (op.contains("hi")) prob *= encoderTableMarkov.hiOpProbMap.get(op);
+                else if (op.contains("td")) prob *= encoderTableMarkov.tdOpProbMap.get(op);
+                else if (op.contains("ti")) prob *= encoderTableMarkov.tiOpProbMap.get(op);
             }
             return prob;
-        } else return 1;
+        } else {
+            return 1;
+        }
     }
+
+    private double getEncodePathProb(List<String> path) {
+        double result = 1;
+        String pathStr = path.toString();
+        if (pathStr.contains("hd")) {
+            result *= encoderTableMarkov.encodeIfHdProbTable.get(1).getProb();
+            int hd = countOccurrencesOfOp(pathStr, "hd");
+            result *= encoderTableMarkov.encodeHdTimesProbTable.get(hd).getProb();
+        } else result *= 1 - encoderTableMarkov.encodeIfHdProbTable.get(1).getProb();
+        if (pathStr.contains("hi")) {
+            result *= encoderTableMarkov.encodeIfHiProbTable.get(1).getProb();
+            int hi = countOccurrencesOfOp(pathStr, "hi");
+            result *= encoderTableMarkov.encodeHiTimesProbTable.get(hi).getProb();
+        } else result *= 1 - encoderTableMarkov.encodeIfHiProbTable.get(1).getProb();
+        if (pathStr.contains("td")) {
+            result *= encoderTableMarkov.encodeIfTdProbTable.get(1).getProb();
+            int td = countOccurrencesOfOp(pathStr, "td");
+            result *= encoderTableMarkov.encodeTdTimesProbTable.get(td).getProb();
+        } else result *= 1 - encoderTableMarkov.encodeIfTdProbTable.get(1).getProb();
+        if (pathStr.contains("ti")) {
+            result *= encoderTableMarkov.encodeIfTiProbTable.get(1).getProb();
+            int ti = countOccurrencesOfOp(pathStr, "ti");
+            result *= encoderTableMarkov.encodeTiTimesProbTable.get(ti).getProb();
+        } else result *= 1 - encoderTableMarkov.encodeIfTiProbTable.get(1).getProb();
+
+        result *= getPathProb(path);
+        return result;
+    }
+
 
     //  tools
     private double calPr_ssm(List<List<String>> paths) {
         AtomicDouble pr_ssm = new AtomicDouble(0);
         paths.forEach(path -> {
-            double pathProb = getPathProb(path.toString());
+            double pathProb = getPathProb(path);
             pr_ssm.getAndAdd(pathProb);
         });
         return pr_ssm.get();
     }
 
-    public static String selectPathByProbability(Map<String, Double> pathProbMap) {
+    public static List<String> selectPathByProbability(Map<List<String>, Double> pathProbMap) {
         double totalProb = pathProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
         double randomProb = new Random().nextDouble() * totalProb;
 
         double cumulativeProb = 0.0;
-        for (Map.Entry<String, Double> entry : pathProbMap.entrySet()) {
+        for (Map.Entry<List<String>, Double> entry : pathProbMap.entrySet()) {
             cumulativeProb += entry.getValue();
             if (randomProb < cumulativeProb) {
                 return entry.getKey();
@@ -411,6 +381,7 @@ public class EncoderDecoder {
 
         return pathProbMap.entrySet().iterator().next().getKey();
     }
+
 
     public static Map<Integer, Integer> selectUniquei2(Map<Pair<Integer, Integer>, Double> pr1Map) {
 //      根据路径概率 均匀的选择一个
@@ -457,35 +428,9 @@ public class EncoderDecoder {
         return temp;
     }
 
-//    public static double LevenshteinSim(String x, String y) {
-//
-//        double maxLength = Double.max(x.length(), y.length());
-//        if (maxLength > 0) {
-//            // 如果需要，可以选择忽略大小写
-//            return (maxLength - StringUtils.getLevenshteinDistance(x, y)) / maxLength;
-//        }
-//        return 1.0;
-//    }
 
-//    public static double JaccardSimilarity(String str1, String str2) {
-//        // 将字符串划分为字符集合
-//        Set<Character> set1 = strToCharSet(str1);
-//        Set<Character> set2 = strToCharSet(str2);
-//
-//        // 计算交集和并集的大小
-//        Set<Character> intersection = new HashSet<>(set1);
-//        intersection.retainAll(set2);
-//
-//        Set<Character> union = new HashSet<>(set1);
-//        union.addAll(set2);
-//
-//
-//        // 计算Jaccard相似度
-//        return (double) intersection.size() / union.size();
-//    }
-
-    String toBinaryString(BigDecimal number, double fixedLength) {
-        String binary = number.toBigInteger().toString(2);
+    String toBinaryString(BigInteger number, double fixedLength) {
+        String binary = number.toString(2);
 
         double zeroLength = fixedLength - binary.length();
 
@@ -495,10 +440,9 @@ public class EncoderDecoder {
     }
 
 
-    public List<String> decode(List<String> encodedList) {
-        encoderTable.buildEncodeTables();
+    public List<String> decode(List<String> encodedList, int mkv) {
         encodedList = initVault(encodedList);
-        int fixedLength = encoderTable.secParam_L;
+        int fixedLength = encoderTableMarkov.secParam_L;
         List<String> originPswd = new ArrayList<>();
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
@@ -507,36 +451,36 @@ public class EncoderDecoder {
             List<String> encodeElementList = splitString(encodedString, fixedLength);
             if (index == 1) {
                 BigInteger encodedPwLength = new BigInteger(encodeElementList.get(0), 2);
-                Integer pwLength = findOriginValue(encodedPwLength, encoderTable.encodePasswdLengthTable);
-                BigInteger encodedFirst3 = new BigInteger(encodeElementList.get(1), 2);
-                String first3 = findOriginValue(encodedFirst3, encoderTable.encodeFirst3Table);
-                decodedPswd.append(first3);
-                List<String> encodedEvery4List = encodeElementList.subList(2, pwLength - 1);
-                for (int i = 0; i < encodedEvery4List.size(); i++) {
+                Integer pwLength = findOriginValue(encodedPwLength, encoderTableMarkov.encodePasswdLengthTable);
+                BigInteger encodedfirstMkv = new BigInteger(encodeElementList.get(1), 2);
+                String firstMkv = findOriginValue(encodedfirstMkv, encoderTableMarkov.encodefirstMkvTable);
+                decodedPswd.append(firstMkv);
+                List<String> encodedEveryMkv_1List = encodeElementList.subList(2, pwLength + 2 - mkv);
+                for (int i = 0; i < encodedEveryMkv_1List.size(); i++) {
                     String prefix;
                     String suffix;
                     BigInteger encodedSuffix;
                     if (i == 0) {
-                        prefix = first3;
-                        encodedSuffix = new BigInteger(encodedEvery4List.get(0), 2);
+                        prefix = firstMkv;
+                        encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(0), 2);
                     } else {
-                        prefix = decodedPswd.substring(i, i + 3);
-                        encodedSuffix = new BigInteger(encodedEvery4List.get(i), 2);
+                        prefix = decodedPswd.substring(i, i + mkv);
+                        encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(i), 2);
                     }
                     Map<String, EncodeLine<String>> encodeSuffixTable =
-                            encoderTable.encodeEvery4Table.get(prefix);
+                            encoderTableMarkov.encodeEveryMkv_1Table.get(prefix);
                     if (encodeSuffixTable == null) {
-                        suffix = findOriginValue(encodedSuffix, encoderTable.absentMkv4Table);
+                        suffix = findOriginValue(encodedSuffix, encoderTableMarkov.absentMkv_1Table);
                     } else {
                         suffix = findOriginValue(encodedSuffix, encodeSuffixTable);
                     }
                     decodedPswd.append(suffix);
                 }
                 originPswd.add(decodedPswd.toString());
-                System.out.println(originPswd);
+//                System.out.println(originPswd);
             } else {
                 BigInteger encodedG = new BigInteger(encodeElementList.get(0), 2);
-                System.out.println("encodedG" + ":" + encodedG);
+//                System.out.println("encodedG" + ":" + encodedG);
                 int g = 0;
                 boolean found = false;
                 for (int t = 0; t < index && !found; t++) {
@@ -547,44 +491,44 @@ public class EncoderDecoder {
                     if (encodedG.compareTo(lowerBound) > 0 && encodedG.compareTo(upperBound) < 0) {
                         g = t;
                         found = true;
-                        System.out.println("lowerBound" + ":" + lowerBound);
-                        System.out.println("upperBound" + ":" + upperBound);
+//                        System.out.println("lowerBound" + ":" + lowerBound);
+//                        System.out.println("upperBound" + ":" + upperBound);
                     }
                 }
-                System.out.println("index" + ":" + index);
-                System.out.println("g" + ":" + g);
-                System.out.println("-----------------------------");
+//                System.out.println("index" + ":" + index);
+//                System.out.println("g" + ":" + g);
+//                System.out.println("-----------------------------");
                 if (g == 0) {
                     BigInteger encodedPwLength = new BigInteger(encodeElementList.get(1), 2);
-                    Integer pwLength = findOriginValue(encodedPwLength, encoderTable.encodePasswdLengthTable);
+                    Integer pwLength = findOriginValue(encodedPwLength, encoderTableMarkov.encodePasswdLengthTable);
 
-                    BigInteger encodedFirst3 = new BigInteger(encodeElementList.get(2), 2);
-                    String first3 = findOriginValue(encodedFirst3, encoderTable.encodeFirst3Table);
-                    decodedPswd.append(first3);
+                    BigInteger encodedfirstMkv = new BigInteger(encodeElementList.get(2), 2);
+                    String firstMkv = findOriginValue(encodedfirstMkv, encoderTableMarkov.encodefirstMkvTable);
+                    decodedPswd.append(firstMkv);
 
-                    List<String> encodedEvery4List = encodeElementList.subList(3, pwLength);
-                    for (int i = 0; i < encodedEvery4List.size(); i++) {
+                    List<String> encodedEveryMkv_1List = encodeElementList.subList(3, pwLength + 3 - mkv);
+                    for (int i = 0; i < encodedEveryMkv_1List.size(); i++) {
                         String prefix;
                         String suffix;
                         BigInteger encodedSuffix;
                         if (i == 0) {
-                            prefix = first3;
-                            encodedSuffix = new BigInteger(encodedEvery4List.get(0), 2);
+                            prefix = firstMkv;
+                            encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(0), 2);
                         } else {
-                            prefix = decodedPswd.substring(i, i + 3);
-                            encodedSuffix = new BigInteger(encodedEvery4List.get(i), 2);
+                            prefix = decodedPswd.substring(i, i + mkv);
+                            encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(i), 2);
                         }
                         Map<String, EncodeLine<String>> encodeSuffixTable =
-                                encoderTable.encodeEvery4Table.get(prefix);
+                                encoderTableMarkov.encodeEveryMkv_1Table.get(prefix);
                         if (encodeSuffixTable == null) {
-                            suffix = findOriginValue(encodedSuffix, encoderTable.absentMkv4Table);
+                            suffix = findOriginValue(encodedSuffix, encoderTableMarkov.absentMkv_1Table);
                         } else {
                             suffix = findOriginValue(encodedSuffix, encodeSuffixTable);
                         }
                         decodedPswd.append(suffix);
                     }
                     originPswd.add(decodedPswd.toString());
-                    System.out.println(originPswd);
+//                    System.out.println(originPswd);
 
                 } else {
                     BigInteger encodedIfHd = new BigInteger(encodeElementList.get(1), 2);
@@ -593,10 +537,10 @@ public class EncoderDecoder {
                     BigInteger encodedIfTi = new BigInteger(encodeElementList.get(4), 2);
 
 //              编码时if=true:=1 false:=0
-                    int ifHd = findOriginValue(encodedIfHd, encoderTable.encodeIfHdProbTable);
-                    int ifHi = findOriginValue(encodedIfHi, encoderTable.encodeIfHiProbTable);
-                    int ifTd = findOriginValue(encodedIfTd, encoderTable.encodeIfTdProbTable);
-                    int ifTi = findOriginValue(encodedIfTi, encoderTable.encodeIfTiProbTable);
+                    int ifHd = findOriginValue(encodedIfHd, encoderTableMarkov.encodeIfHdProbTable);
+                    int ifHi = findOriginValue(encodedIfHi, encoderTableMarkov.encodeIfHiProbTable);
+                    int ifTd = findOriginValue(encodedIfTd, encoderTableMarkov.encodeIfTdProbTable);
+                    int ifTi = findOriginValue(encodedIfTi, encoderTableMarkov.encodeIfTiProbTable);
 
                     int timesLength = ifHd + ifHi + ifTd + ifTi;
 
@@ -621,18 +565,18 @@ public class EncoderDecoder {
 //              查表找原始值
                     int hdTimes = 0, tdTimes = 0, hiTimes = 0, tiTimes = 0;
                     if (!encodedHdTimes.equals(BigInteger.valueOf(0))) {
-                        hdTimes = findOriginValue(encodedHdTimes, encoderTable.encodeHdTimesProbTable);
+                        hdTimes = findOriginValue(encodedHdTimes, encoderTableMarkov.encodeHdTimesProbTable);
                     }
                     if (!encodedTdTimes.equals(BigInteger.valueOf(0))) {
-                        tdTimes = findOriginValue(encodedTdTimes, encoderTable.encodeTdTimesProbTable);
+                        tdTimes = findOriginValue(encodedTdTimes, encoderTableMarkov.encodeTdTimesProbTable);
 
                     }
                     if (!encodedHiTimes.equals(BigInteger.valueOf(0))) {
-                        hiTimes = findOriginValue(encodedHiTimes, encoderTable.encodeHiTimesProbTable);
+                        hiTimes = findOriginValue(encodedHiTimes, encoderTableMarkov.encodeHiTimesProbTable);
 
                     }
                     if (!encodedTiTimes.equals(BigInteger.valueOf(0))) {
-                        tiTimes = findOriginValue(encodedTiTimes, encoderTable.encodeTiTimesProbTable);
+                        tiTimes = findOriginValue(encodedTiTimes, encoderTableMarkov.encodeTiTimesProbTable);
 
                     }
 //              总共操作次数
@@ -644,25 +588,25 @@ public class EncoderDecoder {
                                 5 + timesLength + opsLength));
                         while (hdTimes != 0 && opQueue.size() > 0) {
                             String finalOp = findOriginValue(new BigInteger(opQueue.poll(), 2),
-                                    encoderTable.encodeHdOpProbTable);
+                                    encoderTableMarkov.encodeHdOpProbTable);
                             finalOpList.add(finalOp);
                             hdTimes--;
                         }
                         while (tdTimes != 0 && opQueue.size() > 0) {
                             String finalOp = findOriginValue(new BigInteger(opQueue.poll(), 2),
-                                    encoderTable.encodeTdOpProbTable);
+                                    encoderTableMarkov.encodeTdOpProbTable);
                             finalOpList.add(finalOp);
                             tdTimes--;
                         }
                         while (hiTimes != 0 && opQueue.size() > 0) {
                             String finalOp = findOriginValue(new BigInteger(opQueue.poll(), 2),
-                                    encoderTable.encodeHiOpProbTable);
+                                    encoderTableMarkov.encodeHiOpProbTable);
                             finalOpList.add(finalOp);
                             hiTimes--;
                         }
                         while (tiTimes != 0 && opQueue.size() > 0) {
                             String finalOp = findOriginValue(new BigInteger(opQueue.poll(), 2),
-                                    encoderTable.encodeTiOpProbTable);
+                                    encoderTableMarkov.encodeTiOpProbTable);
                             finalOpList.add(finalOp);
                             tiTimes--;
                         }
@@ -671,12 +615,14 @@ public class EncoderDecoder {
                     String baseString = originPswd.get(g - 1);
 //              对baseString执行操作
                     for (String op : finalOpList) {
-                        int openBracketIndex = op.indexOf("(");
-                        int closeBracketIndex = op.indexOf(")");
-                        String parameter = "";
-                        if (openBracketIndex != -1 && closeBracketIndex != -1 && closeBracketIndex > openBracketIndex) {
-                            parameter = op.substring(openBracketIndex + 1, closeBracketIndex);
-                        }
+//                        int openBracketIndex = op.indexOf("(");
+//                        int closeBracketIndex = op.indexOf(")");
+                        String parameter;
+//                        if (openBracketIndex != -1 && closeBracketIndex != -1 && closeBracketIndex >
+//                        openBracketIndex) {
+//                            parameter = op.substring(openBracketIndex + 1, closeBracketIndex);
+//                        }
+                        parameter = op.substring(3, 4);
                         if (op.contains("hd")) baseString = hd(baseString, parameter);
                         if (op.contains("td")) baseString = td(baseString, parameter);
                         if (op.contains("hi")) baseString = hi(baseString, parameter);
@@ -685,7 +631,7 @@ public class EncoderDecoder {
 //              加入到已解码列表中
                     decodedPswd.append(baseString);
                     originPswd.add(decodedPswd.toString());
-                    System.out.println(originPswd);
+//                    System.out.println(originPswd);
                 }
 
 
@@ -695,20 +641,13 @@ public class EncoderDecoder {
         }
         return originPswd;
 
-//        for (int i = 0; i < encodedList.size(); i++) {
-//            String encoded = encodedList.get(i);
-//            String decoded = decodedPswds.get(i);
-//            codeMap.put(encoded, decoded);
-//        }
-//        return codeMap;
     }
 
 
-    //    originValue lower upper
     <T> T findOriginValue(BigInteger encodedValue, Map<T, EncodeLine<T>> encodeTable) {
         Optional<EncodeLine<T>> result = encodeTable.values().stream()
-                .filter(line -> encodedValue.compareTo(BigDecimal.valueOf(line.getLowerBound()).toBigInteger()) > 0 &&
-                        encodedValue.compareTo(BigDecimal.valueOf(line.getUpperBound()).toBigInteger()) < 0)
+                .filter(line -> encodedValue.compareTo(line.getLowerBound()) > 0 &&
+                        encodedValue.compareTo(line.getUpperBound()) < 0)
                 .findFirst();
 
         if (result.isPresent()) {
@@ -734,53 +673,14 @@ public class EncoderDecoder {
     }
 
 
-    BigDecimal getRandomValue(double lowerBound, double upperBound) {
-        SecureRandom secureRandom = new SecureRandom();
-
-        // 将输入的 double 类型转换为 BigDecimal
-        BigDecimal lower = BigDecimal.valueOf(lowerBound);
-        BigDecimal upper = BigDecimal.valueOf(upperBound);
-
-        // 生成一个 0 到 1 之间的随机 BigInteger
-        BigInteger randomBigInteger = new BigInteger(128, secureRandom);
-
-        // 将随机数映射到指定的区间
-        BigDecimal randomBigDecimal = lower.add(
-                upper.subtract(lower).multiply(new BigDecimal(randomBigInteger))
-                        .divide(new BigDecimal(BigInteger.ONE.shiftLeft(128)))
-        );
-
-        // 如果随机数等于上界，递归调用直到随机数小于上界
-        if (randomBigDecimal.equals(upper)) {
-            return getRandom32BitBigDecimal(lowerBound, upperBound);
-        }
-
-        return randomBigDecimal;
+    static BigInteger getRandomValue(BigInteger lower, BigInteger upper) {
+        double seed = Math.random();
+        BigDecimal lowerBound = new BigDecimal(lower);
+        BigDecimal upperBound = new BigDecimal(upper);
+        BigDecimal randomValue = upperBound.subtract(lowerBound).multiply(BigDecimal.valueOf(seed)).add(lowerBound);
+        return randomValue.toBigInteger();
     }
 
-    BigDecimal getRandom32BitBigDecimal(double lowerBound, double upperBound) {
-        SecureRandom secureRandom = new SecureRandom();
-
-        // 将输入的 double 类型转换为 BigDecimal
-        BigDecimal lower = BigDecimal.valueOf(lowerBound);
-        BigDecimal upper = BigDecimal.valueOf(upperBound);
-
-        // 生成一个 0 到 1 之间的随机 BigInteger
-        BigInteger randomBigInteger = new BigInteger(128, secureRandom);
-
-        // 将随机数映射到指定的区间
-        BigDecimal randomBigDecimal = lower.add(
-                upper.subtract(lower).multiply(new BigDecimal(randomBigInteger))
-                        .divide(new BigDecimal(BigInteger.ONE.shiftLeft(128)))
-        );
-
-        // 如果随机数等于上界，递归调用直到随机数小于上界
-        if (randomBigDecimal.equals(upper)) {
-            return getRandom32BitBigDecimal(lowerBound, upperBound);
-        }
-
-        return randomBigDecimal;
-    }
 
     List<String> splitString(String input, int chunkSize) {
         List<String> chunks = new ArrayList<>();

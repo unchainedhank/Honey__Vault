@@ -2,12 +2,21 @@ package test;
 
 import cn.hutool.core.lang.Pair;
 import cn.hutool.core.math.MathUtil;
+import cn.hutool.extra.pinyin.PinyinUtil;
 import com.example.honeyvault.data_access.EncodeLine;
+import com.example.honeyvault.tool.CalPath;
+import com.example.honeyvault.tool.PreProcess;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import com.xiaoleilu.hutool.util.StrUtil;
 import lombok.Builder;
 import lombok.Data;
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
+import org.python.util.PythonInterpreter;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -22,19 +31,73 @@ public class ToolTest {
     static List<String> candidateList;
 
     public static void main(String[] args) throws ParseException {
-        System.out.println("[hd(x),hi(x)]".split(",").length);
+        for (int i = 0; i < 100; i++) {
+            System.out.println(genRandomStr());
+        }
+
 
     }
+    private static String genRandomStr() {
 
-    private static Date parseBirthdayFromIdCard(String idCard) throws ParseException {
-        // 身份证号码中的生日部分通常是从第7位到第14位
-        String birthdayString = idCard.substring(6, 14);
-
-        // 使用SimpleDateFormat进行解析
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        return sdf.parse(birthdayString);
+        List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                "a", "b", "c",
+                "d", "e",
+                "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+                "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+                "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
+                ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
+                "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
+        List<String> greek = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+                "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+                "Φ", "Χ", "Ψ",
+                "Ω", "ω", "ψ",
+                "χ", "φ", "υ");
+        candidateList.addAll(greek);
+        StringBuilder s = new StringBuilder();
+        int size = RandomUtil.randomInt(1, 16);
+        boolean ifContainsGreek = false;
+        for (int i = 1; i <= size; i++) {
+            int i1 = RandomUtil.randomInt(0, 123);
+            s.append(candidateList.get(i1));
+            if (i1 >= 95) {
+                ifContainsGreek = true;
+            }
+        }
+        if (size <= 5 && !ifContainsGreek) {
+            return genRandomStr();
+        }
+        return s.toString();
+    }
+    static BigInteger getRandomValue(BigInteger lower, BigInteger upper) {
+        double seed = Math.random();
+        BigDecimal lowerBound = new BigDecimal(lower);
+        BigDecimal upperBound = new BigDecimal(upper);
+        BigDecimal randomValue = upperBound.subtract(lowerBound).multiply(BigDecimal.valueOf(seed)).add(lowerBound);
+        return randomValue.toBigInteger();
     }
 
+
+    static BigInteger getRandom32BitBigDecimal(BigInteger lower, BigInteger upper) {
+        SecureRandom secureRandom = new SecureRandom();
+
+        // 将输入的 double 类型转换为 BigDecimal
+
+        // 生成一个 0 到 1 之间的随机 BigInteger
+        BigInteger randomBigInteger = new BigInteger(128, secureRandom);
+
+        // 将随机数映射到指定的区间
+        BigInteger randomBigDecimal = lower.add(
+                upper.subtract(lower).multiply(randomBigInteger)
+                        .divide(BigInteger.ONE.shiftLeft(128))
+        );
+
+        // 如果随机数等于上界，递归调用直到随机数小于上界
+        if (randomBigDecimal.equals(upper)) {
+            return getRandom32BitBigDecimal(lower, upper);
+        }
+
+        return randomBigDecimal;
+    }
 
     public static double f_fit(int i) {
         double i2 = Math.pow(i, 2);
@@ -71,32 +134,6 @@ public class ToolTest {
     }
 
 
-    static <T> T findOriginValue(BigInteger encodedValue, Map<T, EncodeLine<T>> encodeTable) {
-        T result = null;
-        for (Map.Entry<T, EncodeLine<T>> line : encodeTable.entrySet()) {
-            BigDecimal bigDecimal = BigDecimal.valueOf(line.getValue().getLowerBound());
-            BigInteger bigInteger = bigDecimal.toBigInteger();
-            BigDecimal bigDecimal1 = BigDecimal.valueOf(line.getValue().getUpperBound());
-            BigInteger bigInteger1 = bigDecimal1.toBigInteger();
-            if (bigInteger.compareTo(encodedValue) <= 0 &&
-                    bigInteger1.compareTo(encodedValue) > 0) {
-                result = (line.getValue().getOriginValue());
-            }
-        }
-        return result;
-//                .filter(line -> encodedValue.compareTo(BigDecimal.valueOf(line.getLowerBound()).toBigInteger()) > 0 &&
-//                        encodedValue.compareTo(BigDecimal.valueOf(line.getUpperBound()).toBigInteger()) < 0)
-//                .findFirst();
-
-//        if (result.isPresent()) {
-//            EncodeLine<T> encodeLine = result.get();
-//            // 在这里对符合条件的 EncodeLine 进行处理
-//            return encodeLine.getOriginValue();
-//        } else {
-//            // 没有找到符合条件的 EncodeLine
-//            return null;
-//        }
-    }
 
     public static String selectPathByProbability(Map<String, Double> pathProbMap) {
         double totalProb = pathProbMap.values().stream().mapToDouble(Double::doubleValue).sum();

@@ -1,9 +1,12 @@
 package com.example.honeyvault.tool;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -11,13 +14,107 @@ import java.util.stream.Collectors;
 public class CalPath {
 
     public static void main(String[] args) {
-//        List<String> strings = breadthFirstSearch3("2abec", "1abab", 100);
-//        System.out.println(strings.toString());
+        String source = "!@#1bqweag";
+        JSONArray testStr = JSONUtil.parseArray("[\"!@#1bqweag\", \"#1bqweag\",\"!@#1bqwe\", \"#1bqwe\"," +
+                "\"!@#1bqweag\",\"2,!@#1bqweag\",\"!@#1bqweag2,\",\"12!@#1bqweag2,\",\"12!@#1bqwe\",\"#1bqweag2,\"," +
+                "\"##1bqweag\",\"##1bqweagg\",\"##1bqwea\",\"##1bqweaa\",\"!@#1bqwe##\",\"#1bqwe##\",\"#@#1bqwe##\"," +
+                "\"1#1bqwe##\"]");
+//        List<String> testStr = Arrays.asList("2,!@#1bqweag");
+        for (Object t : testStr) {
+            String target = t.toString();
+//            String target = "a";
+            List<List<String>> lists = breadthFirstSearch(source, target);
+            Set<List<String>> opSet = new HashSet<>(lists);
 
+            // 输出所有编辑路径
+            System.out.println("所有编辑路径：");
+            for (List<String> path : opSet) {
+                System.out.println(source+"->"+target);
+                System.out.println(path.toString());
+            }
+        }
 
     }
 
-    public static int editDistance(String str1, String str2) {
+
+    public static List<List<String>> dfs(List<String> list, String source, String target, List<String> opList) {
+        List<List<String>> paths = new ArrayList<>();
+
+        if (source.equals(target)) {
+            paths.add(new ArrayList<>(opList)); // 返回当前路径列表的副本
+            return paths;
+        }
+
+        for (String op : List.of("hd", "td", "hi", "ti")) {
+            List<String> newOpList = new ArrayList<>(opList);
+            Pair<String, String> opRes = new Pair<>("", "");
+            // 执行操作
+            switch (op) {
+                case "hd":
+                    opRes = hd(list, source, target);
+                    break;
+                case "td":
+                    opRes = td(list, source, target);
+                    break;
+                case "hi":
+                    opRes = hi(list, source, target);
+                    break;
+                case "ti":
+                    opRes = ti(list, source, target);
+                    break;
+            }
+
+            String param = opRes.getValue();
+            if (!opRes.getKey().equals(source) && param != null) {
+                newOpList.add(op + "(" + param + ")"); // 添加操作到路径列表
+                List<List<String>> subPaths = dfs(list, opRes.getKey(), target, newOpList);
+                paths.addAll(subPaths);
+            }
+        }
+        return paths;
+    }
+
+
+    public static double ManhattanDistance(String str1, String str2) {
+        Set<Character> s3 = new LinkedHashSet<>();
+        char[] chars1 = str1.toCharArray();
+        char[] chars2 = str2.toCharArray();
+        for (char c : chars1) {
+            s3.add(c);
+        }
+        for (char c : chars2) {
+            s3.add(c);
+        }
+        Function<String, Map<Character, Long>> calculateFrequency = str -> str.chars()
+                .mapToObj(c -> (char) c)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+        Map<Character, Long> freq1 = calculateFrequency.apply(str1);
+        long t1 = str1.length();
+        Map<Character, Long> freq2 = calculateFrequency.apply(str2);
+        long t2 = str2.length();
+
+        Map<Character, Double> freqMap1 = freq1.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> (double) entry.getValue() / t1
+                ));
+        Map<Character, Double> freqMap2 = freq2.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> (double) entry.getValue() / t2
+                ));
+        List<Double> vec1 = new LinkedList<>();
+        List<Double> vec2 = new LinkedList<>();
+        s3.forEach(c -> {
+            vec1.add(freqMap1.getOrDefault(c, 0.0));
+            vec2.add(freqMap2.getOrDefault(c, 0.0));
+        });
+        return calculateEuclideanDistance(vec1, vec2);
+
+    }
+
+    private static int lsDist(String str1, String str2) {
         int m = str1.length();
         int n = str2.length();
         int[][] dp = new int[m + 1][n + 1];
@@ -39,107 +136,92 @@ public class CalPath {
         return dp[m][n];
     }
 
-    public static String hi(List<String> listCandidates, String source, String target) {
-        for (String ch : listCandidates) {
-            String newStr = ch + source;
-            if (editDistance(newStr, target) < editDistance(source, target)) {
+    public static double calculateEuclideanDistance(List<Double> vec1, List<Double> vec2) {
+        if (vec1.size() != vec2.size()) {
+            throw new IllegalArgumentException("Vectors must have the same dimensions");
+        }
+
+        double sumOfSquares = 0.0;
+
+        for (int i = 0; i < vec1.size(); i++) {
+            double diff = vec1.get(i) - vec2.get(i);
+            sumOfSquares += diff * diff;
+        }
+
+        return Math.sqrt(sumOfSquares);
+    }
+
+    private static String ifOpValid(String source, String target, String newStr) {
+
+        int d3 = lsDist(newStr, target);
+        int d4 = lsDist(source, target);
+        if (source.length() > newStr.length()) {
+            double d1 = ManhattanDistance(newStr, target);
+            double d2 = ManhattanDistance(source, target);
+            if (((d1 < d2) && (d3 <= d4)) || ((d3 < d4))) {
+                return newStr;
+            }
+        } else {
+            if ((d3 < d4) && LongestComSubstr(newStr, target).length() > LongestComSubstr(source, target).length()) {
                 return newStr;
             }
         }
-        return source;
+
+        return null;
     }
 
-    public static String ti(List<String> listCandidates, String source, String target) {
+
+    public static Pair<String, String> hi(List<String> listCandidates, String source, String target) {
+        for (String candidate : listCandidates) {
+            String newStr = candidate + source;
+            newStr = ifOpValid(source, target, newStr);
+            if (newStr != null) return new Pair<>(newStr, candidate);
+        }
+        return new Pair<>(source, null);
+    }
+
+
+    public static Pair<String, String> ti(List<String> listCandidates, String source, String target) {
         for (String ch : listCandidates) {
             String newStr = source + ch;
-            if (editDistance(newStr, target) < editDistance(source, target)) {
-                return newStr;
-            }
+            newStr = ifOpValid(source, target, newStr);
+            if (newStr != null) return new Pair<>(newStr, ch);
         }
-        return source;
+        return new Pair<>(source, null);
     }
 
-    public static String hd(List<String> listCandidates, String source, String target) {
+    public static Pair<String, String> hd(List<String> listCandidates, String source, String target) {
         if (!source.isEmpty()) {
             String newStr = source;
             for (String candidate : listCandidates) {
                 if (source.startsWith(candidate)) {
-                    String tmp = newStr;
+                    assert newStr != null;
                     newStr = newStr.substring(candidate.length());
-                    if (editDistance(newStr, target) < editDistance(source, target)) {
-                        return newStr;
-                    } else newStr = tmp;
+                    newStr = ifOpValid(source, target, newStr);
+                    if (newStr != null) return new Pair<>(newStr, candidate);
                 }
             }
-
         }
-        return source;
+        return new Pair<>(source, null);
     }
 
-    public static String td(List<String> listCandidates, String source, String target) {
+    public static Pair<String, String> td(List<String> listCandidates, String source, String target) {
         if (!source.isEmpty()) {
             String newStr = source;
             for (String candidate : listCandidates) {
                 if (source.endsWith(candidate)) {
-                    String tmp = newStr;
+                    assert newStr != null;
                     newStr = newStr.substring(0, source.length() - candidate.length());
-                    if (editDistance(newStr, target) < editDistance(source, target)) {
-                        return newStr;
-                    } else {
-                        newStr = tmp;
-                    }
+                    newStr = ifOpValid(source, target, newStr);
+                    if (newStr != null) return new Pair<>(newStr, candidate);
                 }
             }
         }
-        return source;
+        return new Pair<>(source, null);
+
     }
 
-//    public static List<String> breadthFirstSearch2(String source, String target, int limit) {
-//        List<String> listCandidates = initCandidate(source, target);
-//
-//        List<String> queue = new ArrayList<>();
-//        String newStr = source;
-//        while (!newStr.equals(target) && limit > 0) {
-//            String temp = newStr;
-//            newStr = hi(listCandidates, newStr, target);
-//            if (!newStr.equals(temp)) {
-//                queue.add("hi(" + diff(temp, newStr) + ")");
-//            } else {
-//                temp = newStr;
-//                newStr = ti(listCandidates, newStr, target);
-//                if (!newStr.equals(temp)) {
-//                    queue.add("ti(" + diff(temp, newStr) + ")");
-//                } else {
-//                    temp = newStr;
-//                    newStr = hd(listCandidates, newStr, target);
-//                    if (!newStr.equals(temp)) {
-//                        String diff = diff(temp, newStr);
-//                        queue.add("hd(" + diff + ")");
-//                    } else {
-//                        temp = newStr;
-//                        newStr = td(listCandidates, newStr, target);
-//                        if (!newStr.equals(temp)) {
-//                            queue.add("td(" + diff(temp, newStr) + ")");
-//                        } else {
-//                            return queue;
-//                        }
-//                    }
-//                }
-//            }
-//            limit--;
-//        }
-//        return queue;
-//    }
-
-    public static String diff(String temp, String newStr) {
-        String longestCommonSubstring = findLongestCommonSubstring(temp, newStr);
-        temp = temp.replace(longestCommonSubstring, "");
-        newStr = newStr.replace(longestCommonSubstring, "");
-        if (temp.length() == 0) return newStr;
-        else return temp;
-    }
-
-    public static String findLongestCommonSubstring(String str1, String str2) {
+    public static String LongestComSubstr(String str1, String str2) {
         int m = str1.length();
         int n = str2.length();
 
@@ -169,26 +251,22 @@ public class CalPath {
     }
 
     public static List<String> initCandidate(String source, String target) {
-        Set<String> set = new HashSet<>(Arrays.asList("N1", "N2", "N3", "N4", "N5", "N6", "N7",
-                "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10",
-                "A1", "A2", "A3",
-                "E1", "E2", "E3",
-                "P1", "P2", "P3",
-                "I1", "I2", "I3"));
+        List<String> set = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+                "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+                "Φ", "Χ", "Ψ",
+                "Ω", "ω", "ψ",
+                "χ", "φ", "υ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
+                "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+                "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+                "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
+                ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
+                "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " ");
         List<String> candidateList = new ArrayList<>();
-        for (String s :
-                set) {
+        for (String s : set) {
             if (source.contains(s) || target.contains(s)) {
                 candidateList.add(s);
             }
         }
-        candidateList.addAll(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
-                "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-                "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-                "U", "V", "W", "X", "Y", "Z"));
-        candidateList.addAll(Arrays.asList("!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
-                ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
-                "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
         return candidateList;
     }
 
@@ -206,87 +284,21 @@ public class CalPath {
 
 
     public static List<List<String>> breadthFirstSearch(String source, String target) {
-//        source = source.trim();
-//        target = target.trim();
-        List<String> listCandidates = initCandidate(source, target);
+        List<String> candidateList = initCandidate(source, target);
+        List<List<String>> opList = dfs(candidateList, source, target, new ArrayList<>());
+        Map<String, Integer> priorityMap = new HashMap<>();
+        priorityMap.put("hd", 1);
+        priorityMap.put("td", 2);
+        priorityMap.put("hi", 3);
+        priorityMap.put("ti", 4);
 
-        Queue<Pair<String, List<String>>> queue = new LinkedList<>();
-        List<List<String>> methods = new ArrayList<>();
-        queue.add(new Pair<>(source, new ArrayList<>()));
-
-        while (!queue.isEmpty()) {
-            Pair<String, List<String>> pair = queue.poll();
-            String currStr = pair.getKey();
-            List<String> path = pair.getValue();
-
-            if (currStr.equals(target)) {
-                methods.add(new ArrayList<>(path));
-                if (methods.size() > 5) {
-                    List<List<String>> result = new ArrayList<>();
-                    methods.forEach(l -> result.add(l.stream()
-                            .sorted(new CustomComparator())
-                            .collect(Collectors.toList()))
-                    );
-                    return result.stream().distinct().collect(Collectors.toList());
-                }
-
-            } else {
-                String newStr = hi(listCandidates, currStr, target);
-                if (!newStr.equals(currStr)) {
-                    List<String> newPath = new ArrayList<>(path);
-                    newPath.add("hi(" + diff(currStr, newStr) + ")");
-                    queue.add(new Pair<>(newStr, newPath));
-                }
-                newStr = ti(listCandidates, currStr, target);
-                if (!newStr.equals(currStr)) {
-                    List<String> newPath = new ArrayList<>(path);
-                    newPath.add("ti(" + diff(currStr, newStr) + ")");
-                    queue.add(new Pair<>(newStr, newPath));
-                }
-                newStr = hd(listCandidates, currStr, target);
-                if (!newStr.equals(currStr)) {
-                    List<String> newPath = new ArrayList<>(path);
-                    newPath.add("hd(" + diff(currStr, newStr) + ")");
-                    queue.add(new Pair<>(newStr, newPath));
-                }
-                newStr = td(listCandidates, currStr, target);
-                if (!newStr.equals(currStr)) {
-                    List<String> newPath = new ArrayList<>(path);
-                    newPath.add("td(" + diff(currStr, newStr) + ")");
-                    queue.add(new Pair<>(newStr, newPath));
-                }
-            }
-        }
-
-
-        List<List<String>> result = new ArrayList<>();
-        methods.forEach(l -> result.add(l.stream()
-                .sorted(new CustomComparator())
-                .collect(Collectors.toList()))
-        );
-
-        return result.stream().distinct().collect(Collectors.toList());
+        // 按照优先级排序
+        opList.parallelStream().forEach(operations -> operations.sort(Comparator.comparingInt(s -> {
+            String op = s.substring(0, 2); // 获取操作类型
+            return priorityMap.getOrDefault(op, Integer.MAX_VALUE); // 根据优先级排序
+        })));
+        return opList;
     }
 
 
-    static class CustomComparator implements Comparator<String> {
-        @Override
-        public int compare(String s1, String s2) {
-            return getPriority(s1) - getPriority(s2);
-        }
-
-        private int getPriority(String s) {
-            if (s.startsWith("hd")) {
-                return 1;
-            } else if (s.startsWith("td")) {
-                return 2;
-            } else if (s.startsWith("hi")) {
-                return 3;
-            } else if (s.startsWith("ti")) {
-                return 4;
-            } else {
-                return 0; // 如果出现了不认识的运算符，可以根据需要进行处理
-            }
-        }
-    }
 }

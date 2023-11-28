@@ -1,15 +1,15 @@
 spring:
-  datasource:
-    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@127.0.0.1:1521:XE}
-    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@oracle11g:1521:XE}
-    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@127.0.0.1:1521:XE}
-    username: ${RISK_ORACLE_USER_NAME:unchained}
-    password: ${RISK_ORACLE_PASS_WORD:unchained}
-  jpa:
-    database: oracle
-    hibernate:
-      ddlAuto: update
-      show_sql: true
-      format_sql: true
-      flushMode: Auto
+#  datasource:
+#    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@127.0.0.1:1521:XE}
+#    #    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@oracle11g:1521:XE}
+#    url: ${RISK_ORACLE_URL:jdbc:oracle:thin:@127.0.0.1:1521:XE}
+#    username: ${RISK_ORACLE_USER_NAME:unchained}
+#    password: ${RISK_ORACLE_PASS_WORD:unchained}
+#  jpa:
+#    database: oracle
+#    hibernate:
+#      ddlAuto: update
+#      show_sql: true
+#      format_sql: true
+#      flushMode: Auto
 

@@ -1,103 +1,112 @@
 package com.example.honeyvault;
 
 import cn.hutool.core.lang.Pair;
-import com.example.honeyvault.tool.EncoderDecoder;
-import com.example.honeyvault.tool.PreProcess;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
+import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.paper23_list_version.EncoderDecoderList;
+import com.example.honeyvault.paper23_markov_version.EncoderDecoderMarkov;
+import com.example.honeyvault.paper19.EncoderDecoderWithoutPII;
+import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.*;
-import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 @RestController
 public class VaultController {
-//    @Resource
-//    RenRepository renRepository;
-//    @Resource
-//    DuduRepository duduRepository;
-    //    @Resource
-//    PathRepo repo;
-//    @Resource
-//    PathRepoJdbc pathRepoJdbc;
-
     @Resource
-    EncoderDecoder encoderDecoder;
+    EncoderDecoderMarkov encoderDecoderMarkov;
     @Resource
-    PreProcess preProcessor;
+    EncoderDecoderList encoderDecoderList;
+    @Resource
+    EncoderDecoderWithoutPII encoderDecoderWithoutPII;
 
-    private UserVault userVault;
+    String mainPswd;
+    @Resource
+    PathStatistic pathStatistic;
+
 
     private final int fixedLength = 64 * 128;
 
     @PostMapping("init")
-    public UserVault initVault(@RequestBody UserVault initVault) {
-        System.out.println(initVault.getMainPassword());
-        this.userVault = initVault;
-//                UserVault.builder().mainPassword(initVault.getMainPassword()).vault(initVault.getVault()).build();
-        return userVault;
+    public String initMainPswd(@RequestParam String mainPswd) {
+        this.mainPswd = mainPswd;
+        return mainPswd;
     }
 
-    @PostMapping("/encode")
-    public List<Pair<String, String>> encode() {
-        System.out.println(userVault);
-        List<List<String>> passwordsPII = preProcessor.preProcessPII(userVault);
-        System.out.println(passwordsPII);
-        List<String> vault = new LinkedList<>();
-        passwordsPII.forEach(passwordPII -> vault.add(String.join("", passwordPII)));
-        System.out.println(vault);
-        return encoderDecoder.encode(vault, fixedLength);
+    @PostMapping("/encodeMarkov")
+    public List<String> encodeMarkov(@RequestBody List<String> vault, @RequestParam int mkv,
+                                     @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                                     @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1
+    ) {
+        List<Pair<String, String>> encode = encoderDecoderMarkov.encode(vault, fixedLength, mkv, lambdaOp, lambdaTimes,
+                lambdaMkv, lambdaMkv_1);
+        List<String> encodedString = new ArrayList<>();
+        encode.forEach(e -> encodedString.add(e.getValue()));
+        return encoderDecoderMarkov.decode(encodedString, mkv);
+    }
+
+    @PostMapping("/decodeMarkov")
+    public List<String> decodeMarkov(@RequestBody List<String> encodedStrings, @RequestParam String mainPswd, int mkv) {
+            return encoderDecoderMarkov.decode(encodedStrings, mkv);
     }
 
 
-    @PostMapping("/decode")
-    public List<String> decode(@RequestBody List<String> encodedStrings, @RequestParam String mainPswd) {
-        if (mainPswd != null && mainPswd.equals(userVault.getMainPassword())) {
-        List<String> decodedStringList = encoderDecoder.decode(encodedStrings);
-        Map<String, String> nameMap = preProcessor.preName(userVault.getName());
-        Map<String, String> birthDayMap = preProcessor.preBirth(userVault.getBirthDate());
-        Map<String, String> emailMap = preProcessor.preEmail(userVault.getEmail());
-        Map<String, String> phoneMap = preProcessor.prePhone(userVault.getPhone());
-        Map<String, String> idMap = preProcessor.preIdCard(userVault.getIdCard());
-        List<String> updatedList = new ArrayList<>();
-        for (String decodedString : decodedStringList) {
-            for (Map.Entry<String, String> nameEntry : nameMap.entrySet()) {
-                decodedString = decodedString.replace(nameEntry.getKey(), nameEntry.getValue());
-            }
-            for (Map.Entry<String, String> birthEntry : birthDayMap.entrySet()) {
-                decodedString = decodedString.replace(birthEntry.getKey(), birthEntry.getValue());
-            }
-            for (Map.Entry<String, String> emailEntry : emailMap.entrySet()) {
-                decodedString = decodedString.replace(emailEntry.getKey(), emailEntry.getValue());
-            }
-            for (Map.Entry<String, String> phoneEntry : phoneMap.entrySet()) {
-                decodedString = decodedString.replace(phoneEntry.getKey(), phoneEntry.getValue());
-            }
-            for (Map.Entry<String, String> idEntry : idMap.entrySet()) {
-                decodedString = decodedString.replace(idEntry.getKey(), idEntry.getValue());
-            }
-            updatedList.add(decodedString);
+    @PostMapping("/encodeList")
+    public List<String> encodeList(@RequestBody List<String> vault,
+                                   @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                                   @RequestParam double listLambda
+    ) {
+        encoderDecoderList.init(lambdaOp, lambdaTimes, listLambda);
+        List<Pair<String, String>> encode = encoderDecoderList.encode(vault, fixedLength,listLambda);
+        System.out.println(encode.size());
+        List<String> encodedString = new ArrayList<>();
+        encode.forEach(e -> encodedString.add(e.getValue()));
+        System.out.println(encodedString.size());
+        return encoderDecoderList.decode(encodedString, listLambda);
+    }
+
+
+    @PostMapping("/decodeList")
+    public List<String> decodeList(@RequestBody List<String> encodedStrings, double lambdaOp, double lambdaTimes, double listLambda) {
+        encoderDecoderList.init(lambdaOp, lambdaTimes, listLambda);
+        return encoderDecoderList.decode(encodedStrings,listLambda);
+    }
+
+
+    @PostMapping("/encodeNoPII")
+    public List<String> encodeWithoutPII(@RequestBody List<String> vault, @RequestParam int mkv,
+                                         @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
+                                         @RequestParam double lambdaOp, @RequestParam double lambdaTimes) {
+        encoderDecoderWithoutPII.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+        List<Pair<String, String>> encode = encoderDecoderWithoutPII.encode(vault, fixedLength, mkv, lambdaMkv);
+        List<String> encodedString = new ArrayList<>();
+        System.out.println(encode.toString());
+        encode.forEach(e -> encodedString.add(e.getValue()));
+        return encoderDecoderWithoutPII.decode(encodedString, mkv, lambdaMkv);
+    }
+
+    @GetMapping("/gen")
+    public void genFakeCsv(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                           @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
+        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/fake.csv",
+                CharsetUtil.CHARSET_UTF_8);
+        int count = 0;
+        encoderDecoderMarkov.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
+        for (int i = 0; i < 101756; i++) {
+            List<String> s = new ArrayList<>();
+            s.add(fillWithRandom());
+            String s1 = encoderDecoderMarkov.decode(s, 1).toString();
+            writer.write(Collections.singleton(s1));
+            System.out.println(++count);
         }
-        return updatedList;
-
-        } else {
-//                    输入错误的主口令
-//            确定一个随机的vault长度 1-10
-            int vaultLength = RandomUtil.randomInt(1, 11);
-            List<String> randomizedEncodedStrings = new LinkedList<>();
-            for (int i = 0; i < vaultLength; i++) {
-//              128是安全参数
-                String randomizedEncodedPswd = fillWithRandom();
-                randomizedEncodedStrings.add(randomizedEncodedPswd);
-            }
-
-            return encoderDecoder.decode(randomizedEncodedStrings);
-
-        }
-
-
+        System.out.println("done");
     }
+
 
     String fillWithRandom() {
         StringBuilder filledString = new StringBuilder();
@@ -107,5 +116,28 @@ public class VaultController {
 
         return filledString.toString();
     }
+
+
+    @GetMapping("decoy")
+    public void genDecoyVault(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                              @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
+        encoderDecoderMarkov.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
+        List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
+        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/decoyVault.csv",
+                CharsetUtil.CHARSET_UTF_8);
+        AtomicInteger count = new AtomicInteger();
+        System.out.println("开始");
+        decoyVaultData.forEach(vaultLength -> {
+            List<String> decoyVault = new ArrayList<>();
+            for (int i = 0; i < vaultLength; i++) {
+                decoyVault.add(fillWithRandom());
+            }
+            List<String> decodeDecoyVault = encoderDecoderMarkov.decode(decoyVault, mkv);
+            writer.write(decodeDecoyVault);
+            System.out.println(count.incrementAndGet());
+        });
+
+    }
+
 }
 

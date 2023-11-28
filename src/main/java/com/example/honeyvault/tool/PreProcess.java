@@ -2,15 +2,13 @@ package com.example.honeyvault.tool;
 
 import cn.hutool.extra.pinyin.PinyinUtil;
 import com.example.honeyvault.UserVault;
-import com.example.honeyvault.data_access.PasswdPath;
-import com.example.honeyvault.data_access.PathRepo;
+import com.example.honeyvault.data_access.markov.MarkovUser;
 import net.sourceforge.pinyin4j.PinyinHelper;
 import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
 import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -20,50 +18,71 @@ import java.util.regex.Pattern;
 @Component
 public class PreProcess {
     HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
-    @Resource
-    private PathRepo pathRepo;
 
-    public List<List<String>> modifyPswd2PII(List<PasswdPath> all) {
+    public List<List<String>> modifyPswd2PII(Set<MarkovUser> all) {
         List<List<String>> result = new LinkedList<>();
-        for (PasswdPath user : all) {
-            String id12306 = user.getId12306();
-            if (id12306==null) continue;
-            if (id12306.length()<17) continue;
-            String password163 = user.getPassword163();
-            String passwdCN = user.getPasswd_CN();
-            String password12306 = user.getPassword12306();
+        for (MarkovUser user : all) {
+            String id12306 = user.getId_card();
+            if (id12306 == null) continue;
+            if (id12306.length() < 17) continue;
+            if (user.getRealName().length() < 2) continue;
+
+//            if (StringUtils.containsAny(user.getRealName(),"qwertyuiopasdfghjklzxcvbbnm")) continue;
+            String password = user.getPassword();
             List<String> vault = new LinkedList<>();
-            vault.add(password12306);
-            vault.add(passwdCN);
-            if (password163 != null) {
-                vault.add(password163);
-            }
+            vault.add(password);
             Date date = new Date();
             try {
-                date = parseBirthdayFromIdCard(user.getId12306());
+                date = parseBirthdayFromIdCard(user.getId_card());
             } catch (ParseException e) {
                 e.printStackTrace();
             }
             UserVault piiInstance =
-                    UserVault.builder().vault(vault).name(user.getReal_name()).birthDate(date).email(user.getEmail_CN()).idCard(user.getId12306()).phone(user.getPhone()).build();
+                    UserVault.builder().vault(vault).name(user.getRealName()).birthDate(date).email(user.getEmail()).idCard(user.getId_card()).phone(user.getPhone()).build();
+            List<String> vaultWithPII = preProcessPII(piiInstance);
+            result.add(vaultWithPII);
+        }
+        return result;
+    }
+
+    public Map<String,String> piiMap(Set<MarkovUser> all) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (MarkovUser user : all) {
+            String id12306 = user.getId_card();
+            if (id12306 == null) continue;
+            if (id12306.length() < 17) continue;
+            if (user.getRealName().length() < 2) continue;
+
+//            if (StringUtils.containsAny(user.getRealName(),"qwertyuiopasdfghjklzxcvbbnm")) continue;
+            String password = user.getPassword();
+            List<String> vault = new LinkedList<>();
+            vault.add(password);
+            Date date = new Date();
+            try {
+                date = parseBirthdayFromIdCard(user.getId_card());
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            UserVault piiInstance =
+                    UserVault.builder().vault(vault).name(user.getRealName()).birthDate(date).email(user.getEmail()).idCard(user.getId_card()).phone(user.getPhone()).build();
             List<String> pswdListWithPII = new LinkedList<>();
             preProcessPII(piiInstance).forEach(s -> pswdListWithPII.add(String.join("", s)));
-            result.add(pswdListWithPII);
+            result.put(user.getPassword(), pswdListWithPII.toString());
         }
         return result;
     }
 
 
-    public List<List<String>> preProcessPII(UserVault user) {
+    public List<String> preProcessPII(UserVault user) {
         Map<String, String> nameMap = preName(user.getName());
         Map<String, String> birthDayMap = preBirth(user.getBirthDate());
         Map<String, String> emailMap = preEmail(user.getEmail());
         Map<String, String> phoneMap = prePhone(user.getPhone());
         Map<String, String> idMap = preIdCard(user.getIdCard());
         List<String> vault = user.getVault();
-        List<List<String>> updatedVault = new LinkedList<>();
+        List<String> updatedVault = new LinkedList<>();
         vault.forEach(password -> {
-            List<String> updatedPassword = passwordWithPII(password, nameMap, birthDayMap, emailMap, phoneMap, idMap);
+            String updatedPassword = passwordWithPII(password, nameMap, birthDayMap, emailMap, phoneMap, idMap);
             updatedVault.add(updatedPassword);
         });
         return updatedVault;
@@ -71,27 +90,32 @@ public class PreProcess {
 
 
     public Map<String, String> preName(String name) {
-        format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
-        format.setVCharType(HanyuPinyinVCharType.WITH_V);
+        Map<String, String> preNameMap = new LinkedHashMap<>();
+        try {
+            format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+            format.setVCharType(HanyuPinyinVCharType.WITH_V);
 
-        String lastNamePinyin = getNamePinyin(name.substring(0, 1), "");
-        String firstNamePinyin = getNamePinyin(name.substring(1), "");
+            String  firstNamePinyin= getNamePinyin(name.substring(0, 1), "");
+            String lastNamePinyin = getNamePinyin(name.substring(1), "");
 
-        String namePinyin = getNamePinyin(name, " ");
-        String[] s = namePinyin.split(" ");
-        String fullName = getNamePinyin(name, "");
+            String namePinyin = getNamePinyin(name, " ");
+            String[] s = namePinyin.split(" ");
+            String fullName = getNamePinyin(name, "");
 
-        Map<String, String> preNameMap = new HashMap<>();
-        preNameMap.put("N1", fullName);
-        preNameMap.put("N2", getN2(s));
-        preNameMap.put("N3", lastNamePinyin);
-        preNameMap.put("N4", firstNamePinyin);
-        preNameMap.put("N5", getN5(s));
-        preNameMap.put("N6", getN6(s));
-        preNameMap.put("N7", getN7(s));
-        preNameMap.put("N8", firstNamePinyin + lastNamePinyin);
-        preNameMap.put("N9", getN9(name));
-        preNameMap.put("N10", Character.toUpperCase(firstNamePinyin.charAt(0)) + firstNamePinyin.substring(1));
+            preNameMap.put("Α", fullName);
+            preNameMap.put("τ", lastNamePinyin+firstNamePinyin);
+            preNameMap.put("Β", getN6(s));
+            preNameMap.put("Γ", getN5(s));
+            preNameMap.put("Δ", getN9(name));
+            preNameMap.put("σ", getN2(s));
+            preNameMap.put("Ε", firstNamePinyin);
+            preNameMap.put("Ζ", lastNamePinyin);
+            preNameMap.put("Η", getN7(s));
+            preNameMap.put("ρ", Character.toUpperCase(firstNamePinyin.charAt(0)) + firstNamePinyin.substring(1));
+        } catch (Exception e) {
+            System.out.println(name);
+            e.printStackTrace();
+        }
         return preNameMap;
     }
 
@@ -178,18 +202,18 @@ public class PreProcess {
         String year = (formattedBirthday.substring(0, 4));
         String month = (formattedBirthday.substring(5, 7));
         String day = (formattedBirthday.substring(8, 10));
-        Map<String, String> bValues = new HashMap<>();
-        bValues.put("B1", year + month + day);
-        bValues.put("B2", month + day + year);
-        bValues.put("B3", day + month + year);
-        bValues.put("B4", month + day);
-        bValues.put("B5", year);
-        bValues.put("B6", year + month);
-        bValues.put("B7", month + year);
+        Map<String, String> bValues = new LinkedHashMap<>();
         String last2DigitsOfYear = year.substring(year.length() - 2);
-        bValues.put("B8", last2DigitsOfYear + month + day);
-        bValues.put("B9", month + day + last2DigitsOfYear);
-        bValues.put("B10", day + month + last2DigitsOfYear);
+        bValues.put("Θ", year + month + day);
+        bValues.put("Ι", month + day + year);
+        bValues.put("Κ", day + month + year);
+        bValues.put("Λ", last2DigitsOfYear + month + day);
+        bValues.put("Μ", month + day + last2DigitsOfYear);
+        bValues.put("Ν", day + month + last2DigitsOfYear);
+        bValues.put("Ξ", year + month);
+        bValues.put("Ο", month + year);
+        bValues.put("Π", month + day);
+        bValues.put("Ρ", year);
 
         return bValues;
     }
@@ -203,35 +227,13 @@ public class PreProcess {
 //        return segments;
 //    }
 
-    private String extractFirstLetterSegment(String name) {
-        StringBuilder segment = new StringBuilder();
-        for (char c : name.toCharArray()) {
-            if (Character.isLetter(c)) {
-                segment.append(c);
-            } else {
-                break; // 停止提取，遇到非字母字符
-            }
-        }
-        return segment.toString();
-    }
-
-    private String extractFirstDigitSegment(String name) {
-        StringBuilder segment = new StringBuilder();
-        for (char c : name.toCharArray()) {
-            if (Character.isDigit(c)) {
-                segment.append(c);
-            }
-        }
-        return segment.toString();
-    }
-
 
     public Map<String, String> preEmail(String email) {
         String[] split = email.split("@");
-        Map<String, String> map = new HashMap<>();
-        map.put("E1", split[0]);
-        map.put("E2", extractFirstLetterSegment1(email));
-        map.put("E3", extractFirstDigitSegment1(email));
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("Φ", split[0]);
+        map.put("Χ", extractFirstLetterSegment1(email));
+        map.put("Ψ", extractFirstDigitSegment1(email));
         return map;
     }
 
@@ -257,22 +259,22 @@ public class PreProcess {
 
 
     public Map<String, String> prePhone(String phone) {
-        Map<String, String> map = new HashMap<>();
-        map.put("P1", phone);
-        map.put("P2", phone.substring(0, 3));
-        map.put("P3", phone.substring(phone.length() - 4));
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("Ω", phone);
+        map.put("ω", phone.substring(0, 3));
+        map.put("ψ", phone.substring(phone.length() - 4));
         return map;
     }
 
     public Map<String, String> preIdCard(String card) {
-        Map<String, String> segments = new HashMap<>();
-        segments.put("I1", card.substring(card.length() - 4)); // I1
-        segments.put("I2", card.substring(0, 3)); // I2
-        segments.put("I3", card.substring(0, 6)); // I3
+        Map<String, String> segments = new LinkedHashMap<>();
+        segments.put("χ", card.substring(card.length() - 4)); // I1
+        segments.put("φ", card.substring(0, 6)); // I3
+        segments.put("υ", card.substring(0, 3)); // I2
         return segments;
     }
 
-    private List<String> passwordWithPII(String password, Map<String, String> nameMap,
+    private String passwordWithPII(String password, Map<String, String> nameMap,
                                          Map<String, String> birthDayMap, Map<String, String> emailMap, Map<String,
             String> phoneMap, Map<String, String> idMap) {
         Map<String, String> pii = new HashMap<>();
@@ -292,7 +294,7 @@ public class PreProcess {
         key2Remove.forEach(pii::remove);
 
         Map<Integer, String> replaceIndex = new HashMap<>();
-        List<String> result = new LinkedList<>();
+        StringBuilder result = new StringBuilder();
         for (Map.Entry<String, String> kv : pii.entrySet()) {
             String pattern = kv.getValue();
             String token = kv.getKey();
@@ -311,15 +313,15 @@ public class PreProcess {
                 window = String.valueOf(password.charAt(i));
             }
             if (pii.containsKey(window) && (window.equals(replaceIndex.get(i)))) {
-                result.add(window);
+                result.append(window);
                 i += 2;
             } else {
-                result.add(String.valueOf(password.charAt(i)));
+                result.append(password.charAt(i));
                 i += 1;
             }
         }
 
-        return result;
+        return result.toString();
     }
 
 
