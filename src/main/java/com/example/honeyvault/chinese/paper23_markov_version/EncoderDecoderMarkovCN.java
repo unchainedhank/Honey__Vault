@@ -1,8 +1,11 @@
 package com.example.honeyvault.chinese.paper23_markov_version;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.tool.CalPath;
+import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
@@ -25,7 +28,9 @@ public class EncoderDecoderMarkovCN {
 
 
     public void init(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23M.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableMarkovCN.buildEncodeTables(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
+        writer.writeLine(encoderTableMarkovCN.toString());
     }
 
 //    @PostConstruct
@@ -50,8 +55,8 @@ public class EncoderDecoderMarkovCN {
                 String pwi1 = vault.get(i);
                 String pwi = vault.get(j);
 
-                double A = f_fit(i) / i;
-                double B = 1 - f_fit(i);
+                double A = f_fit(j) / j;
+                double B = 1 - f_fit(j);
                 double pr2 = B * getMarkovProb(vault.get(i), mkv);
                 pathProbMap.put(new Pair<>(i, i), pr2);
 
@@ -91,7 +96,7 @@ public class EncoderDecoderMarkovCN {
     }
 
     public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-1.525 * i + 2.522));
+        return 1 / (1 + Math.exp(-1.493 * i + 2.486));
     }
 
 //    private double calAlpha() {
@@ -127,14 +132,13 @@ public class EncoderDecoderMarkovCN {
         double col2;
         double lower = 0, upper;
         if (g == 0) {
-            upper = Math.floor(pow * f_fit(i));
+            upper = Math.floor(pow *(1 - f_fit(i-1)));
         } else {
-            col2 = (1 - f_fit(i)) / (i - 1);
-            lower = Math.floor(((f_fit(i) + col2 * (g - 1)) * pow));
-            upper = Math.floor(((f_fit(i) + col2 * g) * pow));
+            col2 = f_fit(i-1) / (i-1);
+            lower = Math.floor(((1-f_fit(i-1) + col2 * (g - 1)) * pow));
+            upper = Math.floor(((1-f_fit(i-1) + col2 * g) * pow));
         }
         return new Pair<>(lower, upper);
-
     }
 
 
@@ -443,6 +447,7 @@ public class EncoderDecoderMarkovCN {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableMarkovCN.secParam_L;
         List<String> originPswd = new ArrayList<>();
+//        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table21M.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
@@ -453,6 +458,7 @@ public class EncoderDecoderMarkovCN {
                 Integer pwLength = findOriginValue(encodedPwLength, encoderTableMarkovCN.encodePasswdLengthTable);
                 BigInteger encodedfirstMkv = new BigInteger(encodeElementList.get(1), 2);
                 String firstMkv = findOriginValue(encodedfirstMkv, encoderTableMarkovCN.encodefirstMkvTable);
+
                 decodedPswd.append(firstMkv);
                 List<String> encodedEveryMkv_1List = encodeElementList.subList(2, pwLength + 2 - mkv);
                 for (int i = 0; i < encodedEveryMkv_1List.size(); i++) {
@@ -583,6 +589,9 @@ public class EncoderDecoderMarkovCN {
 //              具体操作list
                     Queue<String> finalOpList = new LinkedList<>();
                     if (timesLength > 0) {
+                        if (5 + timesLength + opsLength > encodeElementList.size()) {
+                            System.out.println("越界");
+                        }
                         Queue<String> opQueue = new LinkedList<>(encodeElementList.subList(5 + timesLength,
                                 5 + timesLength + opsLength));
                         while (hdTimes != 0 && opQueue.size() > 0) {

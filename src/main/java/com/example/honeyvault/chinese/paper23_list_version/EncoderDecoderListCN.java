@@ -1,8 +1,11 @@
 package com.example.honeyvault.chinese.paper23_list_version;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.tool.CalPath;
+import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
@@ -26,7 +29,9 @@ public class EncoderDecoderListCN {
 
 
     public void init(double lambdaOp, double lambdaTimes, double listLambda) {
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23L.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableListCN.buildEncodeTables(lambdaOp, lambdaTimes, listLambda);
+        writer.writeLine(encoderTableListCN.toString());
     }
 
     public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, double listLambda) {
@@ -45,8 +50,8 @@ public class EncoderDecoderListCN {
                 String pwi1 = vault.get(i);
                 String pwi = vault.get(j);
 
-                double A = f_fit(i) / i;
-                double B = 1 - f_fit(i);
+                double A = f_fit(j) / j;
+                double B = 1 - f_fit(j);
                 double pr2 = B;
                 EncodeLine<String> pswdLine = encoderTableListCN.pswdFreqEncodeTable.get(vault.get(i));
                 if (pswdLine != null) {
@@ -68,31 +73,31 @@ public class EncoderDecoderListCN {
         }
         Map<Integer, Integer> pwi1ToPwi = selectUniquei2(pathProbMap);
         pwi1ToPwi.forEach((pwi1Index, pwiIndex) -> {
-            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
-            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
+//            System.out.println("pw i+1" + ":" + vault.get(pwi1Index) + ":" + pwi1Index);
+//            System.out.println("pw i" + ":" + vault.get(pwiIndex) + ":" + pwiIndex);
             int g;
             if (pwi1Index.equals(pwiIndex)) g = 0;
             else g = pwiIndex;
-            System.out.println("g" + ":" + g);
-            System.out.println("index" + ":" + pwiIndex);
+//            System.out.println("g" + ":" + g);
+//            System.out.println("index" + ":" + pwiIndex);
             Pair<Double, Double> gBound = gEncoder(g, pwi1Index);
             BigInteger gDecimal = getRandomValue(BigDecimal.valueOf(gBound.getKey()).toBigInteger(),
                     BigDecimal.valueOf(gBound.getValue()).toBigInteger());
             String encodedG = toBinaryString(gDecimal, encoderTableListCN.secParam_L);
             String encodeString = algo4(g, vault.get(pwiIndex), vault.get(pwi1Index), listLambda);
-            System.out.println("encoded string" + ":" + encodeString);
+//            System.out.println("encoded string" + ":" + encodeString);
 
             encodeString = encodedG + encodeString;
 
             encodeString = fillWithRandom(encodeString, fixedLength);
             pswd2EncodeString.add(new Pair<>(vault.get(pwi1Index), encodeString));
-            System.out.println(pswd2EncodeString);
+//            System.out.println(pswd2EncodeString);
         });
         return pswd2EncodeString;
     }
 
     public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-1.525 * i + 2.522));
+        return 1 / (1 + Math.exp(-1.493 * i + 2.486));
     }
 
 //    private double calAlpha() {
@@ -128,14 +133,13 @@ public class EncoderDecoderListCN {
         double col2;
         double lower = 0, upper;
         if (g == 0) {
-            upper = Math.floor(pow * f_fit(i));
+            upper = Math.floor(pow *(1 - f_fit(i-1)));
         } else {
-            col2 = (1 - f_fit(i)) / (i - 1);
-            lower = Math.floor(((f_fit(i) + col2 * (g - 1)) * pow));
-            upper = Math.floor(((f_fit(i) + col2 * g) * pow));
+            col2 = f_fit(i-1) / (i-1);
+            lower = Math.floor(((1-f_fit(i-1) + col2 * (g - 1)) * pow));
+            upper = Math.floor(((1-f_fit(i-1) + col2 * g) * pow));
         }
         return new Pair<>(lower, upper);
-
     }
 
 
@@ -146,12 +150,12 @@ public class EncoderDecoderListCN {
             BigInteger encodeValue;
             if (encoderTableListCN.pswdFreqEncodeTable.get(targetString) == null) {
                 BigDecimal p1 = getP1(lambda);
-                System.out.println("p1:" + p1);
+//                System.out.println("p1:" + p1);
                 BigInteger twoL = BigInteger.valueOf(2).pow(encoderTableListCN.secParam_L);
                 BigInteger kUp =
                         twoL.subtract(encoderTableListCN.kNPlus1).divide(p1.multiply(new BigDecimal(twoL)).toBigInteger());
                 BigInteger k = getRandomValue(BigInteger.ZERO, kUp);
-                System.out.println("k:" + k);
+//                System.out.println("k:" + k);
                 BigInteger newLower =
                         new BigDecimal(encoderTableListCN.kNPlus1).add(new BigDecimal(k).multiply(p1).multiply(new BigDecimal(twoL))).toBigInteger();
 
@@ -163,8 +167,8 @@ public class EncoderDecoderListCN {
                 BigInteger kAdd1 = k.add(BigInteger.valueOf(1));
                 BigInteger newUpper =
                         new BigDecimal(encoderTableListCN.kNPlus1).add(new BigDecimal(kAdd1).multiply(p1).multiply(new BigDecimal(twoL))).toBigInteger();
-                System.out.println("newUpper:" + newUpper);
-                System.out.println("newLower:" + newLower);
+//                System.out.println("newUpper:" + newUpper);
+//                System.out.println("newLower:" + newLower);
                 EncodeLine<String> newLine =
                         EncodeLine.<String>builder().originValue(targetString).prob(p1.doubleValue()).lowerBound(newLower).upperBound(newUpper).build();
                 encoderTableListCN.pswdFreqEncodeTable.put(targetString, newLine);
@@ -444,6 +448,7 @@ public class EncoderDecoderListCN {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableListCN.secParam_L;
         List<String> originPswd = new ArrayList<>();
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table21L.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
@@ -458,8 +463,8 @@ public class EncoderDecoderListCN {
                     BigDecimal p1 = getP1(lambda);
 
                     BigDecimal bottom = p1.multiply(pow);
-                    System.out.println("p1:" + p1);
-                    System.out.println("bottom:" + bottom);
+//                    System.out.println("p1:" + p1);
+//                    System.out.println("bottom:" + bottom);
 
                     BigDecimal top = new BigDecimal(encodedPswd).subtract(new BigDecimal(kNPlus1));
                     BigInteger lowerBound =
@@ -475,6 +480,7 @@ public class EncoderDecoderListCN {
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
                     encoderTableListCN.pswdFreqEncodeTable.put(randomStr, newRandomLine);
+                    writer.writeLine(String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
                     decodedPswd.append(randomStr);
                 } else {
                     decodedPswd.append(pswd);
@@ -523,6 +529,7 @@ public class EncoderDecoderListCN {
                         EncodeLine<String> newRandomLine =
                                 EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
                         encoderTableListCN.pswdFreqEncodeTable.put(randomStr, newRandomLine);
+                        writer.writeLine(String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
                         decodedPswd.append(randomStr);
                     } else {
                         decodedPswd.append(pswd);

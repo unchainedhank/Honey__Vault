@@ -1,6 +1,7 @@
 package com.example.honeyvault;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.path.PathStatistic;
@@ -30,7 +31,7 @@ public class VaultController {
     PathStatistic pathStatistic;
 
 
-    private final int fixedLength = 64 * 128;
+    private final int fixedLength = 74 * 128;
 
     @PostMapping("init")
     public String initMainPswd(@RequestParam String mainPswd) {
@@ -92,27 +93,9 @@ public class VaultController {
         return encoderDecoderWithoutPIICN.decode(encodedString, mkv, lambdaMkv);
     }
 
-    @GetMapping("/gen")
-    public void genFakeCsv(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
-                           @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
-        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/fake.csv",
-                CharsetUtil.CHARSET_UTF_8);
-        int count = 0;
-        encoderDecoderMarkovCN.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
-        for (int i = 0; i < 101756; i++) {
-            List<String> s = new ArrayList<>();
-            s.add(genRandomStr());
-            String s1 = encoderDecoderMarkovCN.decode(s, 1).toString();
-            writer.write(Collections.singleton(s1));
-            System.out.println(++count);
-        }
-        System.out.println("done");
-    }
-
-
     String genRandomStr() {
         StringBuilder filledString = new StringBuilder();
-        while (filledString.length() < 8192) {
+        while (filledString.length() < fixedLength) {
             filledString.append(RandomUtil.randomInt(0, 2));
         }
         return filledString.toString();
@@ -134,7 +117,7 @@ public class VaultController {
                 decoyVault.add(genRandomStr());
             }
             List<String> decodeDecoyVault = encoderDecoderMarkovCN.decode(decoyVault, mkv);
-            writer.write(decodeDecoyVault);
+            writer.writeLine(String.valueOf(decodeDecoyVault));
             System.out.println(count.incrementAndGet());
         });
 
@@ -146,111 +129,233 @@ public class VaultController {
         CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_1.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer2 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_2.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_3.csv", CharsetUtil.CHARSET_UTF_8);
+
+//        CsvWriter writer1 = CsvUtil.getWriter
+//        ("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv/decoyVault19_1.csv", CharsetUtil
+//        .CHARSET_UTF_8);
+//        CsvWriter writer2 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault19_2.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer3 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault19_3_1.csv", CharsetUtil.CHARSET_UTF_8);
+
         encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
 
+//        for (int i = 0; i < 1017; i++) {
         for (int i = 0; i < 101756; i++) {
             String ranStr = genRandomStr();
             List<String> decoyVault = new ArrayList<>();
             decoyVault.add(ranStr);
             List<String> decode = encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
-            writer1.write(decode);
+            writer1.writeLine(String.valueOf(decode));
         }
-        for (int i = 0; i < 91576; i++) {
-            List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
-            decoyVaultData.forEach(vaultLength -> {
-                List<String> decoyVault = new ArrayList<>();
-                for (int j = 0; j < vaultLength; j++) {
-                    decoyVault.add(genRandomStr());
+        writer1.close();
+        System.out.println("19文件1成功");
+
+        List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
+        System.out.println("19年 读取数据行数："+decoyVaultData.size());
+        for (Integer vaultLength : decoyVaultData) {
+            int maxRetries = 5; // 设置最大重试次数
+            int retries = 0;
+
+            List<String> decode = null;
+
+            while (retries < maxRetries) {
+                try {
+                    decode = decodeVaultLength(mkv, lambdaMkv, vaultLength);
+                    // 如果函数执行成功，跳出循环
+                    break;
+                } catch (Exception e) {
+                    // 捕获异常后输出错误信息
+                    e.printStackTrace();
+                    // 增加重试次数
+                    retries++;
                 }
-                List<String> decode = encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
-                writer2.write(decode);
-            });
-        }
-        for (int i = 0; i < 999; i++) {
-            List<String> decoyVault = new ArrayList<>();
-            for (int j = 0; j < 6; j++) {
-                decoyVault.add(genRandomStr());
             }
-            List<String> decode = encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
-            writer3.write(decode);
+
+            // 在循环结束后，检查是否成功执行函数
+            if (decode != null) {
+                writer2.writeLine(String.valueOf(decode));
+            }
         }
+        System.out.println("19文件2成功");
+        writer2.close();
+
+        for (int i = 0; i < 1000; i++) {
+            List<String> decode = null;
+            int maxRetries = 5; // 设置最大重试次数
+            int retries = 0;
+            while (retries < maxRetries) {
+                try {
+                    decode = decode6(mkv, lambdaMkv);
+                    break;
+                } catch (Exception e) {
+                    // 捕获异常后输出错误信息
+                    e.printStackTrace();
+
+                    // 增加重试次数
+                    retries++;
+                }
+            }
+            if (decode != null) {
+                writer3.writeLine(String.valueOf(decode));
+            }
+        }
+        writer3.close();
+        System.out.println("19文件3成功");
+    }
+
+    private List<String> decode6(int mkv, double lambdaMkv) {
+        List<String> decode;
+        List<String> decoyVault = new ArrayList<>();
+        for (int j = 0; j < 6; j++) {
+            decoyVault.add(genRandomStr());
+        }
+        decode = encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
+        return decode;
+    }
+
+    private List<String> decodeVaultLength(int mkv, double lambdaMkv, Integer vaultLength) {
+        List<String> decoyVault = new ArrayList<>();
+        for (int j = 0; j < vaultLength; j++) {
+            decoyVault.add(genRandomStr());
+        }
+        return encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
     }
 
     @GetMapping("genDV2")
-    public void genDecoyVault23Markov(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+    public void genDecoyVault23Markov(@RequestParam int mkv, @RequestParam double lambdaOp,
+                                      @RequestParam double lambdaTimes,
                                       @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
         CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault23MKV_1.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer2 = CsvUtil.getWriter("/app/HvExpData/decoyVault23MKV_2.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault23MKV_3.csv", CharsetUtil.CHARSET_UTF_8);
+
+
+//        CsvWriter writer1 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23MKV_1.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer2 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23MKV_2.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer3 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23MKV_3.csv", CharsetUtil.CHARSET_UTF_8);
+
+
         encoderDecoderMarkovCN.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
         for (int i = 0; i < 101756; i++) {
             String ranStr = genRandomStr();
             List<String> decoyVault = new ArrayList<>();
             decoyVault.add(ranStr);
-            List<String> decode = encoderDecoderMarkovCN.decode(decoyVault,mkv);
-            writer1.write(decode);
+            List<String> decode = encoderDecoderMarkovCN.decode(decoyVault, mkv);
+            writer1.writeLine(String.valueOf(decode));
         }
+        writer1.close();
+        System.out.println("23M文件1成功");
 
-        for (int i = 0; i < 91576; i++) {
-            List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
-            decoyVaultData.forEach(vaultLength -> {
-                List<String> decoyVault = new ArrayList<>();
-                for (int j = 0; j < vaultLength; j++) {
-                    decoyVault.add(genRandomStr());
+        List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
+        System.out.println("23年M 读取数据行数："+decoyVaultData.size());
+
+        decoyVaultData.forEach(vaultLength -> {
+            List<String> decode = null;
+            List<String> decoyVault = new ArrayList<>();
+            for (int j = 0; j < vaultLength; j++) {
+                decoyVault.add(genRandomStr());
+            }
+            int retries = 0;
+            int maxRetries = 5;
+            while (retries < maxRetries) {
+                try {
+                    decode = encoderDecoderMarkovCN.decode(decoyVault, mkv);
+                    break;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    retries++;
                 }
-                List<String> decode = encoderDecoderMarkovCN.decode(decoyVault,mkv);
-                writer2.write(decode);
-            });
-        }
+            }
+            if (decode != null) {
+                writer2.writeLine(String.valueOf(decode));
+            }
+        });
+        writer2.close();
+        System.out.println("23M文件2成功");
 
-        for (int i = 0; i < 999; i++) {
+        for (int i = 0; i < 1000; i++) {
             List<String> decoyVault = new ArrayList<>();
             for (int j = 0; j < 6; j++) {
                 decoyVault.add(genRandomStr());
             }
-            List<String> decode = encoderDecoderMarkovCN.decode(decoyVault,mkv);
-            writer3.write(decode);
+            List<String> decode = encoderDecoderMarkovCN.decode(decoyVault, mkv);
+            writer3.writeLine(String.valueOf(decode));
         }
+        writer3.close();
+        System.out.println("23M文件3成功");
+
     }
 
     @GetMapping("genDV3")
-    public void genDecoyVault23List( @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+    public void genDecoyVault23List(@RequestParam double lambdaOp, @RequestParam double lambdaTimes,
                                     @RequestParam double listLambda) {
         CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault23List_1.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer2 = CsvUtil.getWriter("/app/HvExpData/decoyVault23List_2.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault23List_3.csv", CharsetUtil.CHARSET_UTF_8);
-        encoderDecoderListCN.init(lambdaOp,lambdaTimes,listLambda);
+
+//        CsvWriter writer1 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23List_1.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer2 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23List_2.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer3 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault23List_3.csv", CharsetUtil.CHARSET_UTF_8);
+
+
+        encoderDecoderListCN.init(lambdaOp, lambdaTimes, listLambda);
 
         for (int i = 0; i < 101756; i++) {
             String ranStr = genRandomStr();
             List<String> decoyVault = new ArrayList<>();
             decoyVault.add(ranStr);
-            List<String> decode = encoderDecoderListCN.decode(decoyVault,listLambda);
-            writer1.write(decode);
+            List<String> decode = encoderDecoderListCN.decode(decoyVault, listLambda);
+            writer1.writeLine(String.valueOf(decode));
         }
+        writer1.close();
+        System.out.println("23L文件1成功");
 
-        for (int i = 0; i < 91576; i++) {
-            List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
-            decoyVaultData.forEach(vaultLength -> {
-                List<String> decoyVault = new ArrayList<>();
-                for (int j = 0; j < vaultLength; j++) {
-                    decoyVault.add(genRandomStr());
+//        for (int i = 0; i < 91576; i++) {
+        List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
+        System.out.println("23年L 读取数据行数："+decoyVaultData.size());
+        decoyVaultData.forEach(vaultLength -> {
+            List<String> decode = null;
+            List<String> decoyVault = new ArrayList<>();
+            for (int j = 0; j < vaultLength; j++) {
+                decoyVault.add(genRandomStr());
+            }
+            int retries = 0;
+            int maxRetries = 5;
+            while (retries < maxRetries) {
+                try {
+                    decode = encoderDecoderListCN.decode(decoyVault, listLambda);
+                    break;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    retries++;
                 }
-                List<String> decode = encoderDecoderListCN.decode(decoyVault,listLambda);
+            }
+            if (decode != null) {
+                writer2.writeLine(String.valueOf(decode));
+            }
+        });
 
-                writer2.write(decode);
-            });
-        }
+        writer2.close();
+        System.out.println("23L文件2成功");
 
-        for (int i = 0; i < 999; i++) {
+        for (int i = 0; i < 1000; i++) {
             List<String> decoyVault = new ArrayList<>();
             for (int j = 0; j < 6; j++) {
                 decoyVault.add(genRandomStr());
             }
-            List<String> decode = encoderDecoderListCN.decode(decoyVault,listLambda);
-
-            writer3.write(decode);
+            List<String> decode = encoderDecoderListCN.decode(decoyVault, listLambda);
+            writer3.writeLine(String.valueOf(decode));
         }
+        writer3.close();
+        System.out.println("23L文件3成功");
+
     }
 
 }

@@ -1,8 +1,11 @@
 package com.example.honeyvault.chinese.paper19;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.tool.CalPath;
+import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
@@ -27,7 +30,9 @@ public class EncoderDecoderWithoutPIICN {
     private Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new HashMap<>();
 
     public void init(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp, double lambdaTimes) {
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+        writer.writeLine(encoderTableWithourPII.toString());
     }
 
 //    @PostConstruct
@@ -71,15 +76,15 @@ public class EncoderDecoderWithoutPIICN {
                 String pwi1 = vault.get(i);
                 String pwi = vault.get(j);
 
-                double A = 1 - f_fit(i);
-                double B = f_fit(i) / i;
+                double A = f_fit(j) / j;
+                double B = 1 - f_fit(j);
 
                 double pr2 = B * getMarkovProb(vault.get(i), mkv, lambdaMkv);
                 pathProbMap.put(new Pair<>(i, i), pr2);
                 double pr1j;
                 if (!pwi.equals(pwi1)) {
                     List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-                    System.out.println(pwi + "->" + pwi1);
+//                    System.out.println(pwi + "->" + pwi1);
                     double pr_ssm = calPr_ssm(paths);
                     pr1j = A * pr_ssm;
                 } else {
@@ -118,7 +123,7 @@ public class EncoderDecoderWithoutPIICN {
     }
 
     public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-1.525 * i + 2.522));
+        return 1 / (1 + Math.exp(-1.493 * i + 2.486));
     }
 
 //    private double calAlpha() {
@@ -154,14 +159,13 @@ public class EncoderDecoderWithoutPIICN {
         double col2;
         double lower = 0, upper;
         if (g == 0) {
-            upper = Math.floor(pow * f_fit(i));
+            upper = Math.floor(pow *(1 - f_fit(i-1)));
         } else {
-            col2 = (1 - f_fit(i)) / (i - 1);
-            lower = Math.floor(((f_fit(i) + col2 * (g - 1)) * pow));
-            upper = Math.floor(((f_fit(i) + col2 * g) * pow));
+            col2 = f_fit(i-1) / (i-1);
+            lower = Math.floor(((1-f_fit(i-1) + col2 * (g - 1)) * pow));
+            upper = Math.floor(((1-f_fit(i-1) + col2 * g) * pow));
         }
         return new Pair<>(lower, upper);
-
     }
 
 
@@ -244,7 +248,7 @@ public class EncoderDecoderWithoutPIICN {
                 Map<List<String>, Double> pathProbMap = new ConcurrentHashMap<>();
 //          路径->概率
                 paths.forEach(path -> {
-                    System.out.println(path);
+//                    System.out.println(path);
                     double pathProb = getEncodePathProb(path, index);
                     pathProbMap.put(path, pathProb);
                 });
@@ -437,8 +441,8 @@ public class EncoderDecoderWithoutPIICN {
 
     private double getEncodePathProb(List<String> path, int i) {
         double result = 1;
-        System.out.println(prDrEncodeLineMap);
-        System.out.println(i);
+//        System.out.println(prDrEncodeLineMap);
+//        System.out.println(i);
         result *= prDrEncodeLineMap.get(new Pair<>(i, false)).getProb();
         String pathString = path.toString();
         if (pathString.contains("hd") || pathString.contains("hi")) {
@@ -578,6 +582,7 @@ public class EncoderDecoderWithoutPIICN {
         int fixedLength = encoderTableWithourPII.secParam_L;
 
         List<String> originPswd = new ArrayList<>();
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
@@ -595,7 +600,7 @@ public class EncoderDecoderWithoutPIICN {
                     BigDecimal topP1 = new BigDecimal(lambdaMkv);
                     BigDecimal bottomP1 =
                             new BigDecimal(encoderTableWithourPII.originFirstMkvSize).add(BigDecimal.valueOf(95).pow(5).multiply(BigDecimal.valueOf(lambdaMkv)));
-                    p1 = topP1.divide(bottomP1,20,RoundingMode.DOWN);
+                    p1 = topP1.divide(bottomP1, 20, RoundingMode.DOWN);
 
                     BigDecimal bottom = p1.multiply(pow);
                     BigDecimal top = new BigDecimal(encodedfirstMkv).subtract(new BigDecimal(kNPlus1));
@@ -612,6 +617,7 @@ public class EncoderDecoderWithoutPIICN {
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
                     encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
+                    writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
                     decodedPswd.append(randomStr);
                 } else {
                     decodedPswd.append(firstMkv);
@@ -638,9 +644,8 @@ public class EncoderDecoderWithoutPIICN {
                     decodedPswd.append(suffix);
                 }
                 originPswd.add(decodedPswd.toString());
-                System.out.println(originPswd);
-            }
-            else {
+//                System.out.println(originPswd);
+            } else {
                 BigInteger encodedG = new BigInteger(encodeElementList.get(0), 2);
                 int g = 0;
                 boolean found = false;
@@ -654,9 +659,9 @@ public class EncoderDecoderWithoutPIICN {
                         found = true;
                     }
                 }
-                System.out.println("index:" + index);
-                System.out.println("g" + ":" + g);
-                System.out.println("-----------------------------");
+//                System.out.println("index:" + index);
+//                System.out.println("g" + ":" + g);
+//                System.out.println("-----------------------------");
                 if (g == 0) {
                     BigInteger encodedPwLength = new BigInteger(encodeElementList.get(1), 2);
                     Integer pwLength = findOriginValue(encodedPwLength, encoderTableWithourPII.encodePasswdLengthTable);
@@ -665,7 +670,7 @@ public class EncoderDecoderWithoutPIICN {
                     if (firstMkv == null) {
                         BigInteger kNPlus1 = encoderTableWithourPII.kNPlus1;
                         BigDecimal pow = BigDecimal.valueOf(2).pow(encoderTableWithourPII.secParam_L);
-                        BigDecimal p1=getP1(lambdaMkv);
+                        BigDecimal p1 = getP1(lambdaMkv);
                         BigDecimal bottom = p1.multiply(pow);
                         BigDecimal top = new BigDecimal(encodedfirstMkv).subtract(new BigDecimal(kNPlus1));
                         BigInteger lowerBound =
@@ -681,6 +686,7 @@ public class EncoderDecoderWithoutPIICN {
                         EncodeLine<String> newRandomLine =
                                 EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
                         encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
+                        writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
                         decodedPswd.append(randomStr);
                     } else {
                         decodedPswd.append(firstMkv);
@@ -708,7 +714,7 @@ public class EncoderDecoderWithoutPIICN {
                         decodedPswd.append(suffix);
                     }
                     originPswd.add(decodedPswd.toString());
-                    System.out.println(originPswd);
+//                    System.out.println(originPswd);
 
                 } else {
 //                  1.Pr_Dr
@@ -1142,7 +1148,7 @@ public class EncoderDecoderWithoutPIICN {
 //              加入到已解码列表中
                         decodedPswd.append(baseString);
                         originPswd.add(decodedPswd.toString());
-                        System.out.println(originPswd);
+//                        System.out.println(originPswd);
                     }
                 }
 
@@ -1212,16 +1218,12 @@ public class EncoderDecoderWithoutPIICN {
     private BigDecimal getP1(double lambda) {
         BigDecimal p1;
         BigDecimal topP1 = new BigDecimal(lambda);
-        double listNumber = 29;
-        for (int i = 2; i < 17; i++) {
-            listNumber += Math.pow(124, i);
-        }
+        BigDecimal listNumber = BigDecimal.valueOf(95).pow(5);
         BigDecimal bottomP1 =
-                new BigDecimal(encoderTableWithourPII.originFirstMkvSize).add(BigDecimal.valueOf(listNumber).multiply(BigDecimal.valueOf(lambda)));
+                new BigDecimal(encoderTableWithourPII.originFirstMkvSize).add(listNumber.multiply(BigDecimal.valueOf(lambda)));
         p1 = topP1.divide(bottomP1, 40, RoundingMode.FLOOR);
         return p1;
     }
-
 
 
     List<String> splitString(String input, int chunkSize) {
