@@ -18,7 +18,7 @@ public class MarkovStatistic {
 //        CsvData data = reader.read(FileUtil.file("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/static/t_12306_replace.csv"));
         List<CsvRow> rows = data.getRows();
         List<String> markovTrainSet = new ArrayList<>();
-        for (int i=1;i<101757;i++) {
+        for (int i=1;i<110000;i++) {
 //        for (int i=1;i<10175;i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
@@ -34,7 +34,7 @@ public class MarkovStatistic {
         CsvData data = reader.read(FileUtil.file("/app/classes/static/t_12306.csv"));
         List<CsvRow> rows = data.getRows();
         List<String> markovTrainSet = new ArrayList<>();
-        for (int i=1;i<101756;i++) {
+        for (int i=1;i<110000;i++) {
 //        for (int i=1;i<10175;i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
