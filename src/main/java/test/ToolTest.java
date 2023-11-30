@@ -7,8 +7,10 @@ import cn.hutool.core.text.csv.CsvData;
 import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
+import com.example.honeyvault.chinese.paper23_markov_version.EncoderDecoderMarkovCN;
 import com.xiaoleilu.hutool.util.RandomUtil;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -19,21 +21,6 @@ import java.util.*;
 public class ToolTest {
 
 
-    public static void main(String[] args) throws ParseException {
-        for (int i = 0; i < 150000; i++) {
-            List<String> decode = null;
-            boolean foundInvalid = true;
-            while (foundInvalid) {
-                List<String> decoyVault = new ArrayList<>();
-                for (int j = 0; j < 6; j++) {
-                    decoyVault.add(genRandomStr());
-                }
-                decode = genTestDecode(decoyVault);
-                boolean tmp = isFoundInvalid(decode);
-                foundInvalid = tmp;
-            }
-        }
-    }
 
     static int fixedLength = 74 * 128;
     static List<String> candidateSet = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",

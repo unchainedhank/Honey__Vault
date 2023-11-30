@@ -26,9 +26,15 @@ public class EncoderDecoderMarkovCN {
     @Resource
     private EncoderTableMarkovCN encoderTableMarkovCN;
 
+    Set<String> greek = new HashSet<>(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+            "Φ", "Χ", "Ψ",
+            "Ω", "ω", "ψ",
+            "χ", "φ", "υ"));
 
     public void init(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
-        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23M.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23M.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/static/table23M.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableMarkovCN.buildEncodeTables(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
         writer.writeLine(encoderTableMarkovCN.toString());
     }
@@ -443,6 +449,8 @@ public class EncoderDecoderMarkovCN {
     }
 
 
+
+    }
     public List<String> decode(List<String> encodedList, int mkv) {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableMarkovCN.secParam_L;

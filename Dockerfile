@@ -7,5 +7,5 @@ COPY target /app/
 ENV TZ=Asia/Shanghai
 
 
-ENTRYPOINT ["java", "-jar", "./app/HoneyVault-0.0.1-SNAPSHOT.jar","-Dfile.encoding=utf-8"]
+ENTRYPOINT ["nohup","java", "-jar", "./app/HoneyVault-0.0.1-SNAPSHOT.jar","-Dfile.encoding=utf-8"]
 #cd#ENTRYPOINT ["java", "-jar", "./app/RiskPredict-0.0.1-SNAPSHOT.jar","--server.port=8082"]
