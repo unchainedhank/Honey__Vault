@@ -32,11 +32,44 @@ public class EncoderDecoderMarkovCN {
             "Ω", "ω", "ψ",
             "χ", "φ", "υ"));
 
+
     public void init(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
-//        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23M.csv", CharsetUtil.CHARSET_UTF_8);
-        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/static/table23M.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/table23M.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableMarkovCN.buildEncodeTables(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
-        writer.writeLine(encoderTableMarkovCN.toString());
+        encoderTableMarkovCN.encodeIfHiProbTable.size();
+        writer.writeLine("encodeIfHiProbTable"+String.valueOf(encoderTableMarkovCN.encodeIfHiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfHdProbTable"+String.valueOf(encoderTableMarkovCN.encodeIfHdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTiProbTable"+String.valueOf(encoderTableMarkovCN.encodeIfTiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTdProbTable"+String.valueOf(encoderTableMarkovCN.encodeIfTdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodefirstMkvTable"+String.valueOf(encoderTableMarkovCN.encodefirstMkvTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeEveryMkv_1Table"+String.valueOf(encoderTableMarkovCN.encodeEveryMkv_1Table));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdTimesProbTable"+String.valueOf(encoderTableMarkovCN.encodeHdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiTimesProbTable"+String.valueOf(encoderTableMarkovCN.encodeHiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdTimesProbTable"+String.valueOf(encoderTableMarkovCN.encodeTdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiTimesProbTable"+String.valueOf(encoderTableMarkovCN.encodeTiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiOpProbTable"+String.valueOf(encoderTableMarkovCN.encodeHiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdOpProbTable"+String.valueOf(encoderTableMarkovCN.encodeHdOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiOpProbTable"+String.valueOf(encoderTableMarkovCN.encodeTiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdOpProbTable"+String.valueOf(encoderTableMarkovCN.encodeTdOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodePasswdLengthTable"+String.valueOf(encoderTableMarkovCN.encodePasswdLengthTable));
+        writer.writeLine(" ");
+        writer.writeLine("absentMkv_1Table"+String.valueOf(encoderTableMarkovCN.absentMkv_1Table));
+        writer.writeLine(" ");
+        writer.close();
     }
 
 //    @PostConstruct

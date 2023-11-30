@@ -29,7 +29,7 @@ public class EncoderDecoderListCN {
 
 
     public void init(double lambdaOp, double lambdaTimes, double listLambda) {
-        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23L.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/table23L.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableListCN.buildEncodeTables(lambdaOp, lambdaTimes, listLambda);
         writer.writeLine(encoderTableListCN.toString());
     }
@@ -439,7 +439,7 @@ public class EncoderDecoderListCN {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableListCN.secParam_L;
         List<String> originPswd = new ArrayList<>();
-        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table21L.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/table21L.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
