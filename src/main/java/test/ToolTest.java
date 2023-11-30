@@ -8,6 +8,7 @@ import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
 import com.example.honeyvault.chinese.paper23_markov_version.EncoderDecoderMarkovCN;
+import com.example.honeyvault.data_access.EncodeLine;
 import com.xiaoleilu.hutool.util.RandomUtil;
 
 import javax.annotation.Resource;
@@ -22,55 +23,27 @@ public class ToolTest {
 
 
     public static void main(String[] args) {
-        for (int i = 0; i < 100; i++) {
-            System.out.println(genRandomStr());
-
-        }
+        initPr_DR();
+        prDrEncodeLineMap.forEach((k,v)-> System.out.println(k.toString()+":"+v.toString()));
     }
-    static List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-            "a", "b", "c",
-            "d", "e",
-            "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-            "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
-            ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
-            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
-    static List<String> greek = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
-            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
-            "Φ", "Χ", "Ψ",
-            "Ω", "ω", "ψ",
-            "χ", "φ", "υ");
-    private static String genRandomStr() {
-        candidateList.addAll(greek);
-        boolean foundInvalid = true;
-        StringBuilder s = new StringBuilder();
-        while (foundInvalid) {
-            s = new StringBuilder();
-            int size = RandomUtil.randomInt(1, 16);
-            for (int i = 1; i <= size; i++) {
-                int i1 = RandomUtil.randomInt(0, 123);
-                s.append(candidateList.get(i1));
-                if (i > 5) {
-                    foundInvalid = !isValid(s.toString());
-                    if (foundInvalid) {
-                        break;
-                    }
-                }
-            }
-            foundInvalid = !isValid(s.toString());
-        }
-        return s.toString();
-    }
+    private static Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new LinkedHashMap<>();
 
-    private static boolean isValid(String decodeString) {
-        int finalLength = 0;
-        for (char c : decodeString.toCharArray()) {
-            String s = String.valueOf(c);
-            if (greek.contains(s)) {
-                finalLength += 5;
-            } else finalLength++;
-            if (finalLength > 16) return false;
+    private static void initPr_DR() {
+        BigDecimal pow = BigDecimal.valueOf(2).pow(128);
+        for (int j = 1; j < 23; j++) {
+            double alpha = 0.5690178377522002;
+            double prob = (j * alpha) / (j * alpha + 1 - alpha);
+            Pair<Integer, Boolean> i_true = new Pair<>(j, Boolean.TRUE);
+            Pair<Integer, Boolean> i_false = new Pair<>(j, Boolean.FALSE);
+
+            BigInteger upperBound = pow.multiply(BigDecimal.valueOf(prob)).toBigInteger();
+            EncodeLine<Pair<Integer, Boolean>> trueLine =
+                    EncodeLine.<Pair<Integer, Boolean>>builder().prob(prob).originValue(i_true).lowerBound(BigInteger.valueOf(0)).upperBound(
+                            upperBound).build();
+            EncodeLine<Pair<Integer, Boolean>> falseLine =
+                    EncodeLine.<Pair<Integer, Boolean>>builder().prob(1-prob).originValue(i_false).lowerBound(upperBound).upperBound(pow.toBigInteger()).build();
+            prDrEncodeLineMap.put(new Pair<>(j, true), trueLine);
+            prDrEncodeLineMap.put(new Pair<>(j, false), falseLine);
         }
-        return finalLength >= 5;
     }
 }
