@@ -450,7 +450,7 @@ public class EncoderDecoderMarkovCN {
 
 
 
-    }
+
     public List<String> decode(List<String> encodedList, int mkv) {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableMarkovCN.secParam_L;

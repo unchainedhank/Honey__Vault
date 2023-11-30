@@ -187,12 +187,6 @@ public class VaultController {
     }
 
     private List<String> decode6(int mkv, double lambdaMkv) {
-//        List<String> decode;
-//        List<String> decoyVault = new ArrayList<>();
-//        for (int j = 0; j < 6; j++) {
-//            decoyVault.add(genRandomStr());
-//        }
-//        decode = encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
         List<String> decode = null;
         boolean foundInvalid = true;
         while (foundInvalid) {
@@ -208,9 +202,7 @@ public class VaultController {
 
     private boolean isFoundInvalid(List<String> decode) {
         boolean foundInvalid = false;
-        for (int i1 = 0; i1 < decode.size(); i1++) {
-            String s = decode.get(i1);
-
+        for (String s : decode) {
             if (!isValid(s)) {
                 foundInvalid = true;
                 break;
@@ -218,13 +210,16 @@ public class VaultController {
         }
         return foundInvalid;
     }
-
-    private List<String> decodeVaultLength(int mkv, double lambdaMkv, Integer vaultLength) {
-        List<String> decoyVault = new ArrayList<>();
-        for (int j = 0; j < vaultLength; j++) {
-            decoyVault.add(genRandomStr());
+    private boolean isValid(String decodeString) {
+        int finalLength = 0;
+        for (char c : decodeString.toCharArray()) {
+            String s = String.valueOf(c);
+            if (candidateSet.contains(s)) {
+                finalLength += 5;
+            } else finalLength++;
+            if (finalLength > 16) return false;
         }
-        return encoderDecoderWithoutPIICN.decode(decoyVault, mkv, lambdaMkv);
+        return finalLength >= 5;
     }
 
     @GetMapping("genDV2")
@@ -333,16 +328,6 @@ public class VaultController {
         encoderDecoderMarkovCN.init(1, 0.01, 1, 0.001, 0.01);
     }
 
-    private boolean isValid(String decodeString) {
-        int finalLength = 0;
-        for (char c : decodeString.toCharArray()) {
-            String s = String.valueOf(c);
-            if (candidateSet.contains(s)) {
-                finalLength += 4;
-            } else finalLength++;
-            if (finalLength > 16) return false;
-        }
-        return finalLength >= 5;
-    }
+
 }
 

@@ -298,15 +298,6 @@ public class EncoderDecoderListCN {
     }
 
     private boolean findOldLower(BigInteger finalNewLower) {
-//        boolean foundMatch = false;
-//        for (EncodeLine<String> encodeLine : encoderTableList.pswdFreqEncodeTable.values()) {
-//            if (encodeLine.getLowerBound().equals(finalNewLower)) {
-//                foundMatch = true;
-//                break;
-//            }
-//        }
-//        return foundMatch;
-
         return encoderTableListCN.pswdFreqEncodeTable.values().stream()
                 .anyMatch(encodeLine -> encodeLine.getLowerBound().equals(finalNewLower));
 
@@ -474,6 +465,7 @@ public class EncoderDecoderListCN {
                             new BigDecimal(kNPlus1).add(top.divide(bottom, 40, RoundingMode.FLOOR).add(BigDecimal.valueOf(1))
                                     .multiply(bottom)).toBigInteger();
                     String randomStr = genRandomStr();
+
                     while (encoderTableListCN.pswdFreqEncodeTable.containsKey(randomStr)) {
                         randomStr = genRandomStr();
                     }
@@ -642,35 +634,42 @@ public class EncoderDecoderListCN {
         return originPswd;
 
     }
+    static List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+            "a", "b", "c",
+            "d", "e",
+            "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+            "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
+            ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
+            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " ","Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+            "Φ", "Χ", "Ψ",
+            "Ω", "ω", "ψ",
+            "χ", "φ", "υ"));
+    static Set<String> greekSet = new HashSet<>(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+            "Φ", "Χ", "Ψ",
+            "Ω", "ω", "ψ",
+            "χ", "φ", "υ"));
+    
 
     private String genRandomStr() {
-
-        List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                "a", "b", "c",
-                "d", "e",
-                "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-                "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-                "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
-                ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
-                "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
-        List<String> greek = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
-                "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
-                "Φ", "Χ", "Ψ",
-                "Ω", "ω", "ψ",
-                "χ", "φ", "υ");
-        candidateList.addAll(greek);
+        boolean foundInvalid = true;
         StringBuilder s = new StringBuilder();
-        int size = RandomUtil.randomInt(1, 16);
-        boolean ifContainsGreek = false;
-        for (int i = 1; i <= size; i++) {
-            int i1 = RandomUtil.randomInt(0, 123);
-            s.append(candidateList.get(i1));
-            if (i1 >= 95) {
-                ifContainsGreek = true;
+        while (foundInvalid) {
+            s = new StringBuilder();
+            int size = RandomUtil.randomInt(1, 16);
+            for (int i = 1; i <= size; i++) {
+                int i1 = RandomUtil.randomInt(0, 123);
+                s.append(candidateList.get(i1));
+                if (i > 5) {
+                    foundInvalid = !isValid(s.toString());
+                    if (foundInvalid) {
+                        break;
+                    }
+                }
             }
-        }
-        if (size <= 5 && !ifContainsGreek) {
-            return genRandomStr();
+            foundInvalid = !isValid(s.toString());
         }
         return s.toString();
     }
@@ -745,6 +744,18 @@ public class EncoderDecoderListCN {
         }
 
         return filledString.toString();
+    }
+
+    private boolean isValid(String decodeString) {
+        int finalLength = 0;
+        for (char c : decodeString.toCharArray()) {
+            String s = String.valueOf(c);
+            if (greekSet.contains(s)) {
+                finalLength += 5;
+            } else finalLength++;
+            if (finalLength > 16) return false;
+        }
+        return finalLength >= 5;
     }
 
 }
