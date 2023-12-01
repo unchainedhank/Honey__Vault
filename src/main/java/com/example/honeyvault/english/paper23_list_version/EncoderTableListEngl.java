@@ -1,4 +1,4 @@
-package com.example.honeyvault.english.paper23_list_version;
+package com.example.honeyvault.chinese.paper23_list_version;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -18,7 +18,7 @@ import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableListENG {
+public class EncoderTableListCN {
 
     Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;

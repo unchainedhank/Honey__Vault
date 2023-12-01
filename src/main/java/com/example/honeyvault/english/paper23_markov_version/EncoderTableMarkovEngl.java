@@ -1,6 +1,6 @@
-package com.example.honeyvault.english.paper23_markov_version;
+package com.example.honeyvault.chinese.paper23_markov_version;
 
-import com.example.honeyvault.data_access.EncodeLine;
+import com.example.honeyvault.data_access.*;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathStatistic;
 import lombok.ToString;
@@ -16,7 +16,7 @@ import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableMarkovENG {
+public class EncoderTableMarkovCN {
 
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> firstMkvProbMap;

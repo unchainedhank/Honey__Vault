@@ -1,4 +1,4 @@
-package com.example.honeyvault.english.paper19;
+package com.example.honeyvault.chinese.paper19;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.LongAdder;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTableWithoutPIIENG {
+public class EncoderTableWithoutPIICN {
     /*
     1. g(dynamic)
     2. length
@@ -150,6 +150,7 @@ public class EncoderTableWithoutPIIENG {
         EncodeLine<String> pr_h_delete =
                 EncodeLine.<String>builder().prob(pr_H_delete).originValue("pr_H_delete").lowerBound(pow.multiply(new BigDecimal(pr_H_insert)).toBigInteger()).upperBound(mid).build();
         EncodeLine<String> pr_h_deleteAndInsert =
+//                EncodeLine.<String>builder().prob(pr_H_deleteAndInsert).originValue("pr_H_deleteAndInsert").lowerBound(mid).upperBound(pow.toBigInteger()).build();
                 EncodeLine.<String>builder().prob(pr_H_deleteAndInsert).originValue("pr_H_deleteAndInsert").lowerBound(mid).upperBound(pow.multiply(BigDecimal.valueOf(pr_H_insert + pr_H_delete + pr_H_deleteAndInsert)).toBigInteger()).build();
         prHOpTable.put("pr_H_insert", pr_h_insert);
         prHOpTable.put("pr_H_delete", pr_h_delete);
@@ -166,6 +167,7 @@ public class EncoderTableWithoutPIIENG {
         EncodeLine<String> pr_t_delete =
                 EncodeLine.<String>builder().prob(pr_T_delete).originValue("pr_T_delete").lowerBound(upperBound).upperBound(floor).build();
         EncodeLine<String> pr_t_deleteAndInsert =
+//                EncodeLine.<String>builder().prob(pr_T_deleteAndInsert).originValue("pr_T_deleteAndInsert").lowerBound(floor).upperBound(pow.toBigInteger()).build();
                 EncodeLine.<String>builder().prob(pr_T_deleteAndInsert).originValue("pr_T_deleteAndInsert").lowerBound(floor).upperBound(pow.multiply(BigDecimal.valueOf(pr_T_insert + pr_T_delete + pr_T_deleteAndInsert)).toBigInteger()).build();
         prTOpTable.put("pr_T_insert", pr_t_insert);
         prTOpTable.put("pr_T_delete", pr_t_delete);
@@ -178,6 +180,24 @@ public class EncoderTableWithoutPIIENG {
         List<String> pathTrainSet = pathStatistic.getPathTrainSetWithoutPII();
         List<String> passwds = markovStatistic.parseT12306WithoutPII();
 
+        Pr_M_head = initProbM(pathTrainSet).get(0);
+        Pr_M_tail = initProbM(pathTrainSet).get(1);
+        Pr_M_headAndTail = initProbM(pathTrainSet).get(2);
+
+        List<Double> Pr_head = initPr_part_op(pathTrainSet, "head");
+        List<Double> Pr_tail = initPr_part_op(pathTrainSet, "tail");
+        Pr_T_insert = Pr_tail.get(0);
+        Pr_T_delete = Pr_tail.get(1);
+        Pr_T_deleteAndInsert = Pr_tail.get(2);
+
+        Pr_H_insert = Pr_head.get(0);
+        Pr_H_delete = Pr_head.get(1);
+        Pr_H_deleteAndInsert = Pr_head.get(2);
+
+        initPrMTable(Pr_M_head, Pr_M_tail, Pr_M_headAndTail);
+        initPrTOpTable(Pr_T_insert, Pr_T_delete, Pr_T_deleteAndInsert);
+        initPrHOpTable(Pr_H_insert, Pr_H_delete, Pr_H_deleteAndInsert);
+
         int mkv_1 = mkv + 1;
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap(userVaultSet);
@@ -185,7 +205,6 @@ public class EncoderTableWithoutPIIENG {
         firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
         System.out.println(firstMkvProbMap.size());
         buildAbsentMkv6Table();
-
 
         everyMkv_1ProbMap = getMkv_1(passwds, mkv_1, lambdaMkv_1);
         System.out.println(everyMkv_1ProbMap.size());
@@ -209,23 +228,7 @@ public class EncoderTableWithoutPIIENG {
         tdOpProbMap = maps.get(2);
         tiOpProbMap = maps.get(3);
 
-        Pr_M_head = initProbM(pathTrainSet).get(0);
-        Pr_M_tail = initProbM(pathTrainSet).get(1);
-        Pr_M_headAndTail = initProbM(pathTrainSet).get(2);
 
-        List<Double> Pr_head = initPr_part_op(pathTrainSet, "head");
-        List<Double> Pr_tail = initPr_part_op(pathTrainSet, "tail");
-        Pr_T_insert = Pr_tail.get(0);
-        Pr_T_delete = Pr_tail.get(1);
-        Pr_T_deleteAndInsert = Pr_tail.get(2);
-
-        Pr_H_insert = Pr_head.get(0);
-        Pr_H_delete = Pr_head.get(1);
-        Pr_H_deleteAndInsert = Pr_head.get(2);
-
-        initPrMTable(Pr_M_head, Pr_M_tail, Pr_M_headAndTail);
-        initPrTOpTable(Pr_T_insert, Pr_T_delete, Pr_T_deleteAndInsert);
-        initPrHOpTable(Pr_H_insert, Pr_H_delete, Pr_H_deleteAndInsert);
 
 
         encodePasswdLengthTable = probMap2EncodeTable(passwdLengthProbMap);
@@ -320,14 +323,17 @@ public class EncoderTableWithoutPIIENG {
                 if (!path.equals("[]")) {
                     int hd = countOccurrences(path, "hd");
                     int hi = countOccurrences(path, "hi");
-                    if (hd > 0 && hi == 0) {
-                        delete.add(1);
-                    } else if (hd == 0 && hi > 0) {
-                        insert.add(1);
-                    } else if (hd > 0 && hi > 0) {
-                        insert_delete.add(1);
+                    if (hd > 0 || hi > 0) {
+                        if (hd > 0 && hi == 0) {
+                            delete.add(1);
+                        } else if (hd == 0 && hi > 0) {
+                            insert.add(1);
+                        } else if (hd > 0 && hi > 0) {
+                            insert_delete.add(1);
+                        }
+                        pathCount.add(1);
                     }
-                    pathCount.add(1);
+
                 }
             });
         } else {
@@ -336,14 +342,16 @@ public class EncoderTableWithoutPIIENG {
                 if (!path.equals("[]")) {
                     int td = countOccurrences(path, "td");
                     int ti = countOccurrences(path, "ti");
-                    if (td > 0 && ti == 0) {
-                        delete.add(1);
-                    } else if (td == 0 && ti > 0) {
-                        insert.add(1);
-                    } else if (td > 0 && ti > 0) {
-                        insert_delete.add(1);
+                    if (td > 0 || ti > 0) {
+                        if (td > 0 && ti == 0) {
+                            delete.add(1);
+                        } else if (td == 0 && ti > 0) {
+                            insert.add(1);
+                        } else if (td > 0 && ti > 0) {
+                            insert_delete.add(1);
+                        }
+                        pathCount.add(1);
                     }
-                    pathCount.add(1);
                 }
             });
         }
