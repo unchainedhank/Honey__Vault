@@ -1,4 +1,4 @@
-package com.example.honeyvault.chinese.paper23_list_version;
+package com.example.honeyvault.english.paper23_list_version;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -18,7 +18,7 @@ import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableListCN {
+public class EncoderTableListEngl {
 
     Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;
@@ -68,8 +68,7 @@ public class EncoderTableListCN {
         candidateList.addAll(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
                 "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
                 "Φ", "Χ", "Ψ",
-                "Ω", "ω", "ψ",
-                "χ", "φ", "υ"
+                "Ω", "ω", "ψ"
         ));
         List<String> strings = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
                 "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
@@ -84,7 +83,7 @@ public class EncoderTableListCN {
 
 
     public void buildEncodeTables(double lambdaOp, double lambdaTimes,double listLambda) {
-        List<String> passwds = markovStatistic.parseT12306();
+        List<String> passwds = markovStatistic.parseClix();
         final double totalSize = passwds.size();
         pswdFreqMap = passwds.stream()
                 .collect(Collectors.groupingBy(String::toString, Collectors.counting()))
@@ -93,7 +92,7 @@ public class EncoderTableListCN {
         double originSize = pswdFreqMap.values().stream().mapToDouble(Double::doubleValue).sum();
         double pow = 29;
         for (int i = 2; i < 17; i++) {
-            pow += Math.pow(124, i);
+            pow += Math.pow(121, i);
         }
         double factor = originSize + listLambda * pow;
         pswdFreqMap.replaceAll((pswd, freq) -> (freq + listLambda) / factor);
@@ -112,7 +111,7 @@ public class EncoderTableListCN {
         }
         kNPlus1 = maxEncodeLine.getUpperBound();
 
-        List<String> pathTrainSet = pathStatistic.getPathTrainSet();
+        List<String> pathTrainSet = pathStatistic.getPathTrainSetEngl();
 
         ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
         ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
@@ -196,7 +195,7 @@ public class EncoderTableListCN {
 
 
         double originSize = opProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambdaOp * 124;
+        double factor = originSize + lambdaOp * 121;
 
         double factor2 = lambdaOp / factor;
 

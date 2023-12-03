@@ -30,9 +30,47 @@ public class EncoderDecoderWithoutPIICN {
     private Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new HashMap<>();
 
     public void init(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp, double lambdaTimes) {
-        CsvWriter writer = CsvUtil.getWriter("/writeData/table19.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin19.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
-        writer.writeLine(encoderTableWithourPII.toString());
+        writer.writeLine("encodeFirstMkvTable"+String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeEveryMkv_1Table"+String.valueOf(encoderTableWithourPII.encodeEveryMkv_1Table));
+        writer.writeLine(" ");
+        writer.writeLine("absentMkv_1Table"+String.valueOf(encoderTableWithourPII.absentMkv_1Table));
+        writer.writeLine(" ");
+        writer.writeLine("encodePasswdLengthTable"+String.valueOf(encoderTableWithourPII.encodePasswdLengthTable));
+        writer.writeLine(" ");
+        writer.writeLine("prMTable"+String.valueOf(encoderTableWithourPII.prMTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfHdProbTable"+String.valueOf(encoderTableWithourPII.encodeIfHdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTiProbTable"+String.valueOf(encoderTableWithourPII.encodeIfTiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTdProbTable"+String.valueOf(encoderTableWithourPII.encodeIfTdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfHiProbTable"+String.valueOf(encoderTableWithourPII.encodeIfHiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdTimesProbTable"+String.valueOf(encoderTableWithourPII.encodeHdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiTimesProbTable"+String.valueOf(encoderTableWithourPII.encodeHiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdTimesProbTable"+String.valueOf(encoderTableWithourPII.encodeTdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiTimesProbTable"+String.valueOf(encoderTableWithourPII.encodeTiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiOpProbTable"+String.valueOf(encoderTableWithourPII.encodeHiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdOpProbTable"+String.valueOf(encoderTableWithourPII.encodeHdOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiOpProbTable"+String.valueOf(encoderTableWithourPII.encodeTiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdOpProbTable"+String.valueOf(encoderTableWithourPII.encodeTdOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("prHOpTable"+String.valueOf(encoderTableWithourPII.prHOpTable));
+        writer.writeLine(" ");
+        writer.writeLine("prTOpTable"+String.valueOf(encoderTableWithourPII.prTOpTable));
+        writer.writeLine(" ");
+        writer.close();
     }
 
 //    @PostConstruct
@@ -59,8 +97,10 @@ public class EncoderDecoderWithoutPIICN {
         }
     }
 
-    public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, int mkv, double lambdaMkv) {
+    public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, int mkv, double lambdaOp,
+                                             double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
 //        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv);
+        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
         List<String> vault = initVault(initVault);
         Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
         List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
@@ -582,7 +622,7 @@ public class EncoderDecoderWithoutPIICN {
         int fixedLength = encoderTableWithourPII.secParam_L;
 
         List<String> originPswd = new ArrayList<>();
-        CsvWriter writer = CsvUtil.getWriter("/writeData/table19.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin19.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);

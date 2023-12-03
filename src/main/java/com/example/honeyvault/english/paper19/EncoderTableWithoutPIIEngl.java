@@ -1,4 +1,4 @@
-package com.example.honeyvault.chinese.paper19;
+package com.example.honeyvault.english.paper19;
 
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.LongAdder;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTableWithoutPIICN {
+public class EncoderTableWithoutPIIEngl {
     /*
     1. g(dynamic)
     2. length
@@ -176,9 +176,9 @@ public class EncoderTableWithoutPIICN {
 
 
     public void buildEncodeTablesWithoutPII(int mkv,double lambdaMkv,double lambdaMkv_1,double lambdaOp,double lambdaTimes) {
-        Set<PathAndAlphaUser> userVaultSet = pathStatistic.parsePswdsWithoutPII();
-        List<String> pathTrainSet = pathStatistic.getPathTrainSetWithoutPII();
-        List<String> passwds = markovStatistic.parseT12306WithoutPII();
+        Set<PathAndAlphaUser> userVaultSet = pathStatistic.parsePswdsWithoutPIIEngl();
+        List<String> pathTrainSet = pathStatistic.getPathTrainSetWithoutPIIEngl();
+        List<String> passwds = markovStatistic.parseClixWithoutPII();
 
         Pr_M_head = initProbM(pathTrainSet).get(0);
         Pr_M_tail = initProbM(pathTrainSet).get(1);

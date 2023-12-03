@@ -29,9 +29,35 @@ public class EncoderDecoderListCN {
 
 
     public void init(double lambdaOp, double lambdaTimes, double listLambda) {
-        CsvWriter writer = CsvUtil.getWriter("/writeData/table23L.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin23L.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableListCN.buildEncodeTables(lambdaOp, lambdaTimes, listLambda);
-        writer.writeLine(encoderTableListCN.toString());
+        writer.writeLine("encodeIfHiProbTable"+String.valueOf(encoderTableListCN.encodeIfHiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfHdProbTable"+String.valueOf(encoderTableListCN.encodeIfHdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTiProbTable"+String.valueOf(encoderTableListCN.encodeIfTiProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeIfTdProbTable"+String.valueOf(encoderTableListCN.encodeIfTdProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("pswdFreqEncodeTable"+String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdTimesProbTable"+String.valueOf(encoderTableListCN.encodeHdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiTimesProbTable"+String.valueOf(encoderTableListCN.encodeHiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdTimesProbTable"+String.valueOf(encoderTableListCN.encodeTdTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiTimesProbTable"+String.valueOf(encoderTableListCN.encodeTiTimesProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHiOpProbTable"+String.valueOf(encoderTableListCN.encodeHiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeHdOpProbTable"+String.valueOf(encoderTableListCN.encodeHdOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTiOpProbTable"+String.valueOf(encoderTableListCN.encodeTiOpProbTable));
+        writer.writeLine(" ");
+        writer.writeLine("encodeTdOpProbTable"+String.valueOf(encoderTableListCN.encodeTdOpProbTable));
+        writer.writeLine(" ");
+        writer.close();
     }
 
     public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, double listLambda) {
@@ -439,7 +465,7 @@ public class EncoderDecoderListCN {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableListCN.secParam_L;
         List<String> originPswd = new ArrayList<>();
-        CsvWriter writer = CsvUtil.getWriter("/writeData/table21L.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin21L.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);

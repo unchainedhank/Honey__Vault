@@ -1,6 +1,6 @@
-package com.example.honeyvault.chinese.paper23_markov_version;
+package com.example.honeyvault.english.paper23_markov_version;
 
-import com.example.honeyvault.data_access.*;
+import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathStatistic;
 import lombok.ToString;
@@ -16,7 +16,7 @@ import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableMarkovCN {
+public class EncoderTableMarkovEngl {
 
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> firstMkvProbMap;
@@ -68,8 +68,7 @@ public class EncoderTableMarkovCN {
         candidateList.addAll(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
                 "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
                 "Φ", "Χ", "Ψ",
-                "Ω", "ω", "ψ",
-                "χ", "φ", "υ"
+                "Ω", "ω", "ψ"
         ));
         List<String> strings = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
                 "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
@@ -84,14 +83,14 @@ public class EncoderTableMarkovCN {
 
     void buildAbsentMkv_1Table() {
         absentMkv_1ProbMap = new HashMap<>();
-        double defaultValue = 0.008064516129;
+        double defaultValue = 0.00826446281;
         candidateList.forEach(s -> absentMkv_1ProbMap.put(s, defaultValue));
         absentMkv_1Table = probMap2EncodeTable(absentMkv_1ProbMap);
     }
 
 
     public void buildEncodeTables(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
-        List<String> passwds = markovStatistic.parseT12306();
+        List<String> passwds = markovStatistic.parseClix();
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap(passwds);
         firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
@@ -103,7 +102,7 @@ public class EncoderTableMarkovCN {
             encodeEveryMkv_1Table.putIfAbsent(prefix, stringEncodeTableLineMap);
         });
 
-        List<String> pathTrainSet = pathStatistic.getPathTrainSet();
+        List<String> pathTrainSet = pathStatistic.getPathTrainSetEngl();
 
         ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
         ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
@@ -197,7 +196,7 @@ public class EncoderTableMarkovCN {
 
 
         double originSize = opProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambdaOp * 124;
+        double factor = originSize + lambdaOp * 121;
 
         double factor2 = lambdaOp / factor;
 
@@ -303,7 +302,7 @@ public class EncoderTableMarkovCN {
             }
         }
         double originSize = result.values().stream().mapToDouble(Double::doubleValue).sum();
-        double pow = Math.pow(124, mkv);
+        double pow = Math.pow(121, mkv);
         double factor = originSize + lambdaMkv * pow;
         double factor2 = lambdaMkv / factor;
 
@@ -333,8 +332,8 @@ public class EncoderTableMarkovCN {
 
         result.forEach((prefix, map) -> {
             double originSize = map.values().stream().mapToDouble(Double::doubleValue).sum();
-            double smoothFactor = lambdaMkv_1 / (originSize + lambdaMkv_1 * 124);
-            map.replaceAll((suffix, times) -> ((times + lambdaMkv_1) / (originSize + lambdaMkv_1 * 124)));
+            double smoothFactor = lambdaMkv_1 / (originSize + lambdaMkv_1 * 121);
+            map.replaceAll((suffix, times) -> ((times + lambdaMkv_1) / (originSize + lambdaMkv_1 * 121)));
             candidateList.forEach(s -> map.putIfAbsent(s, smoothFactor));
         });
 
