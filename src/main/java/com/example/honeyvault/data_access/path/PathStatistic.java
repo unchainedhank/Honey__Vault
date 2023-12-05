@@ -14,10 +14,14 @@ import java.util.*;
 public class PathStatistic {
     public Set<PathAndAlphaUser> parsePswds() {
         CsvReader reader = CsvUtil.getReader();
+
         CsvData data = reader.read(FileUtil.file("/readData/t_12306_163_replace.csv"));
+
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
+
         for (int i = 1; i < 91226; i++) {
+
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
             String p1 = rawList.get(4);
@@ -38,10 +42,12 @@ public class PathStatistic {
 
     public Set<PathAndAlphaUser> parsePswdsWithoutPII() {
         CsvReader reader = CsvUtil.getReader();
+
         CsvData data = reader.read(FileUtil.file("/readData/t_12306_163_replace.csv"));
+
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
-        for (int i = 1; i < 91226; i++) {
+        for (int i = 1; i < 91577; i++) {
 //        for (int i = 1; i < 9122; i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
@@ -56,25 +62,8 @@ public class PathStatistic {
                         PathAndAlphaUser.builder().replace_163(pswd163).replace_12306(pswd12306).build();
                 pathTrainSet.add(user);
             }
-//            好的，现在加入另外两个编辑函数hi()和ti()，当bfSource!=target且hd()和td()不再能使bfSrouce发生变化时，尝试广度搜索hi和ti，搜索的逻辑同上，将路径
         }
         return pathTrainSet;
-    }
-
-    public List<String> getPathTrainSetWithoutPII() {
-        Set<PathAndAlphaUser> userSet = parsePswdsWithoutPII();
-        List<String> pathTrainList = new ArrayList<>();
-        for (PathAndAlphaUser user : userSet) {
-            String pw_163 = user.getReplace_163();
-            String pw_12306 = user.getReplace_12306();
-            if (pw_163 == null || pw_12306 == null) {
-                continue;
-            }
-            List<List<String>> paths = CalPath.breadthFirstSearch(pw_12306, pw_163);
-            paths.forEach(path -> pathTrainList.add(path.toString()));
-
-        }
-        return pathTrainList;
     }
 
 
@@ -94,25 +83,22 @@ public class PathStatistic {
         return pathTrainList;
     }
 
-    /*public List<Integer> getDecoyVaultData() {
-        CsvReader reader = CsvUtil.getReader();
-        CsvData data = reader.read(FileUtil.file("/readData/chinese_merge_noUN.csv"));
-        List<CsvRow> rows = data.getRows();
-        List<Integer> result = new ArrayList<>();
-        for (int i = 1; i < 91595; i++) {
-            CsvRow csvRow = rows.get(i);
-            List<String> rawList = csvRow.getRawList();
-            List<String> decoyVaultData_i = new ArrayList<>();
-            Optional.ofNullable(rawList.get(4)).ifPresent(decoyVaultData_i::add);
-            Optional.ofNullable(rawList.get(5)).ifPresent(decoyVaultData_i::add);
-            Optional.ofNullable(rawList.get(6)).ifPresent(decoyVaultData_i::add);
-            Optional.ofNullable(rawList.get(7)).ifPresent(decoyVaultData_i::add);
-            Optional.ofNullable(rawList.get(8)).ifPresent(decoyVaultData_i::add);
-            Optional.ofNullable(rawList.get(9)).ifPresent(decoyVaultData_i::add);
-            result.add(decoyVaultData_i.size());
+    public List<String> getPathTrainSetWithoutPII() {
+        Set<PathAndAlphaUser> userSet = parsePswdsWithoutPII();
+        List<String> pathTrainList = new ArrayList<>();
+        for (PathAndAlphaUser user : userSet) {
+            String pw_163 = user.getReplace_163();
+            String pw_12306 = user.getReplace_12306();
+            if (pw_163 == null || pw_12306 == null) {
+                continue;
+            }
+            List<List<String>> paths = CalPath.breadthFirstSearch(pw_12306, pw_163);
+            paths.forEach(path -> pathTrainList.add(path.toString()));
+
         }
-        return result;
-    }*/
+        return pathTrainList;
+    }
+
 
     public Set<PathAndAlphaUser> parsePswdsEngl() {
         CsvReader reader = CsvUtil.getReader();
@@ -195,6 +181,5 @@ public class PathStatistic {
         }
         return pathTrainList;
     }
-
 
 }

@@ -11,6 +11,7 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
@@ -48,7 +49,7 @@ public class EncoderTableListCN {
     Map<String, EncodeLine<String>> encodeTiOpProbTable;
 
     Map<String, Double> pswdFreqMap;
-    Map<String, EncodeLine<String>> pswdFreqEncodeTable;
+    Map<String, EncodeLine<String>> pswdFreqEncodeTable = new ConcurrentHashMap<>();
 
     Integer originPswdFreqSize = 0;
     BigInteger kNPlus1 = new BigInteger("0");
@@ -322,7 +323,7 @@ public class EncoderTableListCN {
         BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
         BigDecimal lowerBound = BigDecimal.ZERO;
         BigDecimal upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();
