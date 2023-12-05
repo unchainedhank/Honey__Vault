@@ -150,34 +150,46 @@ public class VaultController {
     }
 
 
-    @GetMapping("/encodeNoPIICN")
-    public void encodeWithoutPIICN(@RequestBody List<String> vault, @RequestParam int mkv,
-                                           @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
-                                           @RequestParam double lambdaOp, @RequestParam double lambdaTimes) {
+//    @GetMapping("/encodeNoPIICN")
+//    public void encodeWithoutPIICN(@RequestBody List<String> vault, @RequestParam int mkv,
+//                                           @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
+//                                           @RequestParam double lambdaOp, @RequestParam double lambdaTimes) {
+//
+//        Thread myThread1 = new Thread(new Runnable() {
+//            public void run() {
+//                encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+//                System.out.println("jinru thread encodeNoPIICN");
+//                String path = "/writeData/encodeNoPIICN.csv";
+//                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
+//                List<Pair<String, String>> encode = encoderDecoderWithoutPIICN.encode(vault, fixedLength, mkv, lambdaOp,
+//                        lambdaTimes, lambdaMkv, lambdaMkv_1);
+//                List<String> encodedString = new ArrayList<>();
+//                System.out.println(encode.toString());
+//                encode.forEach(e -> encodedString.add(e.getValue()));
+//                List<String> decode = null;
+//                decode = encoderDecoderWithoutPIICN.decode(encodedString, mkv, lambdaMkv);
+//                writer1.writeLine(String.valueOf(decode));
+//                writer1.close();
+//                System.out.println("encodeNoPIICN成功");
+//            }
+//        });
+//        myThread1.start();
+//        System.out.println("结束 encodeNoPIICN");
+//    }
 
-        Thread myThread1 = new Thread(new Runnable() {
-            public void run() {
-                encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
-                System.out.println("jinru thread encodeNoPIICN");
-                String path = "/writeData/encodeNoPIICN.csv";
-                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                List<Pair<String, String>> encode = encoderDecoderWithoutPIICN.encode(vault, fixedLength, mkv, lambdaOp,
-                        lambdaTimes,
-                        lambdaMkv, lambdaMkv_1);
-                List<String> encodedString = new ArrayList<>();
-                System.out.println(encode.toString());
-                encode.forEach(e -> encodedString.add(e.getValue()));
-                List<String> decode = null;
-                decode = encoderDecoderWithoutPIICN.decode(encodedString, mkv, lambdaMkv);
-                writer1.writeLine(String.valueOf(decode));
-                writer1.close();
-                System.out.println("encodeNoPIICN成功");
-            }
-        });
-        myThread1.start();
-        System.out.println("结束 encodeNoPIICN");
+
+    @PostMapping("/encodeNoPIICN")
+    public List<String> encodeNoPIICN(@RequestBody List<String> vault, @RequestParam int mkv,
+                                             @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
+                                             @RequestParam double lambdaOp, @RequestParam double lambdaTimes) {
+        encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+        List<Pair<String, String>> encode = encoderDecoderWithoutPIICN.encode(vault, fixedLength, mkv, lambdaOp,
+                lambdaTimes, lambdaMkv, lambdaMkv_1);
+        List<String> encodedString = new ArrayList<>();
+        System.out.println(encode.toString());
+        encode.forEach(e -> encodedString.add(e.getValue()));
+        return encoderDecoderWithoutPIICN.decode(encodedString, mkv, lambdaMkv);
     }
-
 
     @PostMapping("/encodeNoPIIEngl")
     public List<String> encodeWithoutPIIEngl(@RequestBody List<String> vault, @RequestParam int mkv,
@@ -458,7 +470,7 @@ public class VaultController {
                     String path = "/writeData/decoyVaultCN23MKV_3_" + count + ".csv";
                     CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
 
-                    for (int i = 0; i < 1000; i++) {
+                    for (int i = 0; i < 2000; i++) {
                         List<String> decode = null;
                         boolean foundInvalid = true;
                         while (foundInvalid) {
@@ -480,30 +492,30 @@ public class VaultController {
             myThread.start();
         }
 
-        Thread myThread1 = new Thread(new Runnable() {
-            public void run() {
-                System.out.println("jinru thread Engl23MKV_3");
-                String path = "/writeData/decoyVaultCN23MKV_1.csv";
-                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                System.out.println("over, fanhui 23CNMarkov");
-                for (int i = 0; i < 150000; i++) {
-                    List<String> decode = null;
-                    boolean foundInvalid = true;
-                    while (foundInvalid) {
-                        String ranStr = genRandomStr();
-                        List<String> decoyVault = new ArrayList<>();
-                        decoyVault.add(ranStr);
-                        decode = encoderDecoderMarkovCN.decode(decoyVault, mkv);
-                        foundInvalid = isFoundInvalid(decode);
-                    }
-                    System.out.println(i + "Engl23MKV_3");
-                    writer1.writeLine(String.valueOf(decode));
-                }
-                writer1.close();
-                System.out.println("decoyVaultCN23MKV_1成功");
-            }
-        });
-        myThread1.start();
+//        Thread myThread1 = new Thread(new Runnable() {
+//            public void run() {
+//                System.out.println("jinru thread Engl23MKV_3");
+//                String path = "/writeData/decoyVaultCN23MKV_1.csv";
+//                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
+//                System.out.println("over, fanhui 23CNMarkov");
+//                for (int i = 0; i < 150000; i++) {
+//                    List<String> decode = null;
+//                    boolean foundInvalid = true;
+//                    while (foundInvalid) {
+//                        String ranStr = genRandomStr();
+//                        List<String> decoyVault = new ArrayList<>();
+//                        decoyVault.add(ranStr);
+//                        decode = encoderDecoderMarkovCN.decode(decoyVault, mkv);
+//                        foundInvalid = isFoundInvalid(decode);
+//                    }
+//                    System.out.println(i + "Engl23MKV_3");
+//                    writer1.writeLine(String.valueOf(decode));
+//                }
+//                writer1.close();
+//                System.out.println("decoyVaultCN23MKV_1成功");
+//            }
+//        });
+//        myThread1.start();
 
         System.out.println("over, fanhui 23CNMarkov");
 //        for (int i = 0; i < 150000; i++) {

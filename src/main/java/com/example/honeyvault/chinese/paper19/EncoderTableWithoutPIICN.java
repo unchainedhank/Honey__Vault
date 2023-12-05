@@ -127,20 +127,49 @@ public class EncoderTableWithoutPIICN {
         absentMkv_1Table = probMap2EncodeTable(absentMkv_1ProbMap);
     }
 
+//    private void initPrMTable(double pr_M_head, double pr_M_tail, double pr_M_headAndTail) {
+//        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
+//        BigInteger lowerBound = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
+//        EncodeLine<String> pr_m_head =
+//                EncodeLine.<String>builder().prob(pr_M_head).originValue("pr_M_head").lowerBound(BigInteger.valueOf(0)).upperBound(lowerBound).build();
+//        BigDecimal mid = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
+//        EncodeLine<String> pr_m_tail =
+//                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_tail").lowerBound(lowerBound).upperBound(mid.toBigInteger()).build();
+//        EncodeLine<String> pr_m_headAndTail =
+//                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_headAndTail").lowerBound(mid.toBigInteger()).upperBound(pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail + pr_M_headAndTail)).toBigInteger()).build();
+//        prMTable.put("pr_M_head", pr_m_head);
+//        prMTable.put("pr_M_tail", pr_m_tail);
+//        prMTable.put("pr_M_headAndTail", pr_m_headAndTail);
+//    }
+
     private void initPrMTable(double pr_M_head, double pr_M_tail, double pr_M_headAndTail) {
-        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
-        BigInteger lowerBound = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
+        BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
+        BigInteger value1 = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
         EncodeLine<String> pr_m_head =
-                EncodeLine.<String>builder().prob(pr_M_head).originValue("pr_M_head").lowerBound(BigInteger.valueOf(0)).upperBound(lowerBound).build();
-        BigDecimal mid = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
+                EncodeLine.<String>builder()
+                        .prob(pr_M_head)
+                        .originValue("pr_M_head")
+                        .lowerBound(BigInteger.valueOf(0))
+                        .upperBound(value1).build();
+        BigDecimal value2 = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
         EncodeLine<String> pr_m_tail =
-                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_tail").lowerBound(lowerBound).upperBound(mid.toBigInteger()).build();
+                EncodeLine.<String>builder()
+                        .prob(pr_M_tail)
+                        .originValue("pr_M_tail")
+                        .lowerBound(value1)
+                        .upperBound(value2.toBigInteger()).build();
         EncodeLine<String> pr_m_headAndTail =
-                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_headAndTail").lowerBound(mid.toBigInteger()).upperBound(pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail + pr_M_headAndTail)).toBigInteger()).build();
+                EncodeLine.<String>builder()
+                        .prob(pr_M_headAndTail)
+                        .originValue("pr_M_headAndTail")
+                        .lowerBound(value2.toBigInteger())
+                        .upperBound(pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail + pr_M_headAndTail)).toBigInteger()).build();
         prMTable.put("pr_M_head", pr_m_head);
         prMTable.put("pr_M_tail", pr_m_tail);
         prMTable.put("pr_M_headAndTail", pr_m_headAndTail);
     }
+
+
 
     private void initPrHOpTable(double pr_H_insert, double pr_H_delete, double pr_H_deleteAndInsert) {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
@@ -289,17 +318,16 @@ public class EncoderTableWithoutPIICN {
         pathTrainSet.forEach(path -> {
             boolean isHeadModified = path.contains("hd") || path.contains("hi");
             boolean isTailModified = path.contains("td") || path.contains("ti");
-            if (!path.equals("[]")) {
+            if (!"[]".equals(path)) {
                 pathCount.add(1);
-            }
-            if (isHeadModified && !isTailModified) {
-                headCount.add(1);
-            }
-            if (!isHeadModified && isTailModified) {
-                tailCount.add(1);
-            }
-            if (isHeadModified && isTailModified) {
-                headAndTailCount.add(1);
+                if (isHeadModified && isTailModified) {
+                    headAndTailCount.add(1);
+                }
+                else if (isHeadModified) {
+                    headCount.add(1);
+                } else if (isTailModified) {
+                    tailCount.add(1);
+                }
             }
         });
         List<Double> result = new ArrayList<>();

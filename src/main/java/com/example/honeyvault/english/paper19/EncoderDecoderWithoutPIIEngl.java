@@ -34,7 +34,7 @@ public class EncoderDecoderWithoutPIIEngl {
         encoderTableWithourPIIEngl.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
         writer.writeLine("encodeFirstMkvTable"+String.valueOf(encoderTableWithourPIIEngl.encodeFirstMkvTable));
         writer.writeLine(" ");
-        writer.writeLine("encodeEveryMkv_1Table"+String.valueOf(encoderTableWithourPIIEngl.encodeEveryMkv_1Table));
+        //writer.writeLine("encodeEveryMkv_1Table"+String.valueOf(encoderTableWithourPIIEngl.encodeEveryMkv_1Table));
         writer.writeLine(" ");
         writer.writeLine("absentMkv_1Table"+String.valueOf(encoderTableWithourPIIEngl.absentMkv_1Table));
         writer.writeLine(" ");

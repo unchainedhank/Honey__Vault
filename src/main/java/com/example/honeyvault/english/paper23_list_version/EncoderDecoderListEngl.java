@@ -39,7 +39,7 @@ public class EncoderDecoderListEngl {
         writer.writeLine(" ");
         writer.writeLine("encodeIfTdProbTable"+String.valueOf(encoderTableListEngl.encodeIfTdProbTable));
         writer.writeLine(" ");
-        writer.writeLine("pswdFreqEncodeTable"+String.valueOf(encoderTableListEngl.pswdFreqEncodeTable));
+        //writer.writeLine("pswdFreqEncodeTable"+String.valueOf(encoderTableListEngl.pswdFreqEncodeTable));
         writer.writeLine(" ");
         writer.writeLine("encodeHdTimesProbTable"+String.valueOf(encoderTableListEngl.encodeHdTimesProbTable));
         writer.writeLine(" ");
