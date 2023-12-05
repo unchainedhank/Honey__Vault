@@ -1,13 +1,12 @@
 package com.example.honeyvault;
 
 import cn.hutool.core.lang.Pair;
-import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
-import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.chinese.paper19.EncoderDecoderWithoutPIICN;
 import com.example.honeyvault.chinese.paper23_list_version.EncoderDecoderListCN;
 import com.example.honeyvault.chinese.paper23_markov_version.EncoderDecoderMarkovCN;
-import com.example.honeyvault.chinese.paper19.EncoderDecoderWithoutPIICN;
+import com.example.honeyvault.data_access.path.PathStatistic;
 import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import org.springframework.web.bind.annotation.*;
@@ -108,40 +107,19 @@ public class VaultController {
     }
 
 
-    @GetMapping("decoy")
-    public void genDecoyVault(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
-                              @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
-        encoderDecoderMarkovCN.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
-        List<Integer> decoyVaultData = pathStatistic.getDecoyVaultData();
-        CsvWriter writer = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/decoyVault.csv",
-                CharsetUtil.CHARSET_UTF_8);
-        AtomicInteger count = new AtomicInteger();
-        System.out.println("开始");
-        decoyVaultData.forEach(vaultLength -> {
-            List<String> decoyVault = new ArrayList<>();
-            for (int i = 0; i < vaultLength; i++) {
-                decoyVault.add(genRandomStr());
-            }
-            List<String> decodeDecoyVault = encoderDecoderMarkovCN.decode(decoyVault, mkv);
-            writer.writeLine(String.valueOf(decodeDecoyVault));
-            System.out.println(count.incrementAndGet());
-        });
-
-    }
-
     @GetMapping("genDV1")
     public void genDecoyVault19(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
                                 @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
-//        CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_1.csv", CharsetUtil.CHARSET_UTF_8);
-//        CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_3.csv", CharsetUtil.CHARSET_UTF_8);
-
-        CsvWriter writer1 = CsvUtil.getWriter
-        ("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv/decoyVault19_1.csv", CharsetUtil
-        .CHARSET_UTF_8);
-        CsvWriter writer2 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
-                "/decoyVault19_2.csv", CharsetUtil.CHARSET_UTF_8);
-        CsvWriter writer3 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
-                "/decoyVault19_3_1.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_1.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault19_3.csv", CharsetUtil.CHARSET_UTF_8);
+//
+//        CsvWriter writer1 = CsvUtil.getWriter
+//        ("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv/decoyVault19_1.csv", CharsetUtil
+//        .CHARSET_UTF_8);
+//        CsvWriter writer2 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault19_2.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer3 = CsvUtil.getWriter("/Users/a3/IdeaProjects/HoneyVault/src/main/resources/testCsv" +
+//                "/decoyVault19_3_1.csv", CharsetUtil.CHARSET_UTF_8);
 
         encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
 
@@ -321,6 +299,18 @@ public class VaultController {
         writer3.close();
         System.out.println("23L文件3成功");
 
+    }
+
+    @GetMapping("checkTable19")
+    public void checkTable19(@RequestParam int mkv, @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                             @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
+        encoderDecoderWithoutPIICN.init(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+    }
+
+    @GetMapping("checkTableList")
+    public void checkTableList(@RequestParam double lambdaOp, @RequestParam double lambdaTimes,
+                               @RequestParam double listLambda) {
+        encoderDecoderListCN.init(lambdaOp, lambdaTimes, listLambda);
     }
 
     @GetMapping("test")

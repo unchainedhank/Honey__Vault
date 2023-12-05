@@ -31,7 +31,21 @@ public class EncoderDecoderListCN {
     public void init(double lambdaOp, double lambdaTimes, double listLambda) {
         CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23L.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableListCN.buildEncodeTables(lambdaOp, lambdaTimes, listLambda);
-        writer.writeLine(encoderTableListCN.toString());
+        writer.writeLine("encodeHdOpProbTable" + ":" + encoderTableListCN.encodeHdOpProbTable);
+        writer.writeLine("encodeHiOpProbTable" + ":" + encoderTableListCN.encodeHiOpProbTable);
+        writer.writeLine("encodeTdOpProbTable" + ":" + encoderTableListCN.encodeTdOpProbTable);
+        writer.writeLine("encodeTiOpProbTable" + ":" + encoderTableListCN.encodeTiOpProbTable);
+        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
+        writer.writeLine("encodeIfTiProbTable" + ":" + encoderTableListCN.encodeIfTiProbTable);
+        writer.writeLine("encodeIfTdProbTable" + ":" + encoderTableListCN.encodeIfTdProbTable);
+        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
+        writer.writeLine("encodeIfHiProbTable" + ":" + encoderTableListCN.encodeIfHiProbTable);
+        writer.writeLine("encodeHdTimesProbTable" + ":" + encoderTableListCN.encodeHdTimesProbTable);
+        writer.writeLine("encodeHiTimesProbTable" + ":" + encoderTableListCN.encodeHiTimesProbTable);
+        writer.writeLine("encodeTiTimesProbTable" + ":" + encoderTableListCN.encodeTiTimesProbTable);
+        writer.writeLine("encodeTdTimesProbTable" + ":" + encoderTableListCN.encodeTdTimesProbTable);
+        writer.writeLine("pswdFreqEncodeTable" + ":" + encoderTableListCN.pswdFreqEncodeTable);
+        writer.close();
     }
 
     public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, double listLambda) {
@@ -454,9 +468,6 @@ public class EncoderDecoderListCN {
                     BigDecimal p1 = getP1(lambda);
 
                     BigDecimal bottom = p1.multiply(pow);
-//                    System.out.println("p1:" + p1);
-//                    System.out.println("bottom:" + bottom);
-
                     BigDecimal top = new BigDecimal(encodedPswd).subtract(new BigDecimal(kNPlus1));
                     BigInteger lowerBound =
                             new BigDecimal(kNPlus1).add(top.divide(bottom, 40, RoundingMode.FLOOR)
@@ -471,8 +482,7 @@ public class EncoderDecoderListCN {
                     }
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                    encoderTableListCN.pswdFreqEncodeTable.put(randomStr, newRandomLine);
-                    writer.writeLine(String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
+                    encoderTableListCN.pswdFreqEncodeTable.putIfAbsent(randomStr, newRandomLine);
                     decodedPswd.append(randomStr);
                 } else {
                     decodedPswd.append(pswd);
@@ -651,7 +661,7 @@ public class EncoderDecoderListCN {
             "Φ", "Χ", "Ψ",
             "Ω", "ω", "ψ",
             "χ", "φ", "υ"));
-    
+
 
     private String genRandomStr() {
         boolean foundInvalid = true;
