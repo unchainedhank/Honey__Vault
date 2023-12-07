@@ -11,8 +11,11 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
@@ -98,7 +101,7 @@ public class EncoderTableWithoutPIICN {
     public Map<String, EncodeLine<String>> prTOpTable = new HashMap<>();
     public Map<String, EncodeLine<String>> prHOpTable = new HashMap<>();
 
-    int secParam_L;
+    int secParam_L=128;
     List<String> candidateList;
 
     @Resource
@@ -127,21 +130,6 @@ public class EncoderTableWithoutPIICN {
         absentMkv_1Table = probMap2EncodeTable(absentMkv_1ProbMap);
     }
 
-//    private void initPrMTable(double pr_M_head, double pr_M_tail, double pr_M_headAndTail) {
-//        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
-//        BigInteger lowerBound = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
-//        EncodeLine<String> pr_m_head =
-//                EncodeLine.<String>builder().prob(pr_M_head).originValue("pr_M_head").lowerBound(BigInteger.valueOf(0)).upperBound(lowerBound).build();
-//        BigDecimal mid = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
-//        EncodeLine<String> pr_m_tail =
-//                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_tail").lowerBound(lowerBound).upperBound(mid.toBigInteger()).build();
-//        EncodeLine<String> pr_m_headAndTail =
-//                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_headAndTail").lowerBound(mid.toBigInteger()).upperBound(pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail + pr_M_headAndTail)).toBigInteger()).build();
-//        prMTable.put("pr_M_head", pr_m_head);
-//        prMTable.put("pr_M_tail", pr_m_tail);
-//        prMTable.put("pr_M_headAndTail", pr_m_headAndTail);
-//    }
-
     private void initPrMTable(double pr_M_head, double pr_M_tail, double pr_M_headAndTail) {
         BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
         BigInteger value1 = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
@@ -164,13 +152,10 @@ public class EncoderTableWithoutPIICN {
                         .originValue("pr_M_headAndTail")
                         .lowerBound(value2.toBigInteger())
                         .upperBound(pow.toBigInteger()).build();
-
         prMTable.put("pr_M_head", pr_m_head);
         prMTable.put("pr_M_tail", pr_m_tail);
         prMTable.put("pr_M_headAndTail", pr_m_headAndTail);
     }
-
-
 
     private void initPrHOpTable(double pr_H_insert, double pr_H_delete, double pr_H_deleteAndInsert) {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
@@ -398,16 +383,18 @@ public class EncoderTableWithoutPIICN {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                path = path.replace("[", "");
-                path = path.replace("]", "");
-                String[] split = path.split(",");
-                for (String s : split) {
-                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
-                        continue;
-                    }
-                    if (s.contains("hd")) {
-                        hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
-                    } else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
+                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
+                Matcher matcher = pattern.matcher(path);
+
+                // 提取操作元素
+                List<String> operations = new ArrayList<>();
+                while (matcher.find()) {
+                    operations.add(matcher.group());
+                }
+                for (String s : operations) {
+                    if (s.contains("()")) continue;
+                    if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
+                    else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("ti")) tiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                 }
@@ -535,7 +522,7 @@ public class EncoderTableWithoutPIICN {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
         double lowerBound = 0.0;
         double upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

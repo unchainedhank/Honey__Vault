@@ -46,7 +46,7 @@ public class VaultController {
     PathStatistic pathStatistic;
 
 
-    private final int fixedLength = 74 * 128;
+    private final int fixedLength = 80 * 128;
 
     Set<String> candidateSetCN = new HashSet<>(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
             "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
@@ -245,9 +245,10 @@ public class VaultController {
                 String path = "/writeData/decoyVaultCN19_1.csv";
                 CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
 //        for (int i = 0; i < 1017; i++) {
-                for (int i = 0; i < 150000; i++) {
+                for (int i = 0; i < 15; i++) {
                     List<String> decode = null;
                     boolean foundValid = true;
+
                     while (foundValid) {
                         String ranStr = genRandomStr();
                         List<String> decoyVault = new ArrayList<>();
@@ -268,7 +269,7 @@ public class VaultController {
                 System.out.println("jinru thread 19CN3");
                 String path = "/writeData/decoyVaultCN19_3.csv";
                 CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 150000; i++) {
+                for (int i = 0; i < 15; i++) {
                     List<String> decode = null;
                     int maxRetries = 5; // 设置最大重试次数
                     int retries = 0;
@@ -354,7 +355,7 @@ public class VaultController {
                 String path = "/writeData/decoyVaultEngl19_1.csv";
                 CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
 //        for (int i = 0; i < 1017; i++) {
-                for (int i = 0; i < 300000; i++) {
+                for (int i = 0; i < 30; i++) {
                     List<String> decode = null;
                     boolean foundValid = true;
                     while (foundValid) {
@@ -377,7 +378,7 @@ public class VaultController {
                 System.out.println("jinru thread 19EN3");
                 String path = "/writeData/decoyVaultEngl19_3.csv";
                 CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 300000; i++) {
+                for (int i = 0; i < 30; i++) {
                     List<String> decode = null;
                     int maxRetries = 5; // 设置最大重试次数
                     int retries = 0;
@@ -425,6 +426,9 @@ public class VaultController {
 
     private boolean isFoundInvalidEngl(List<String> decode) {
         boolean foundInvalid = false;
+        if (decode == null) {
+            return true;
+        }
         for (String s : decode) {
             if (!isValidEngl(s)) {
                 foundInvalid = true;
@@ -473,7 +477,7 @@ public class VaultController {
                     String path = "/writeData/decoyVaultCN23MKV_3_" + count + ".csv";
                     CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
 
-                    for (int i = 0; i < 2000; i++) {
+                    for (int i = 0; i < 20; i++) {
                         List<String> decode = null;
                         boolean foundInvalid = true;
                         while (foundInvalid) {
@@ -585,7 +589,7 @@ public class VaultController {
                     System.out.println("jinru threadEngl23MKV_3");
                     String path = "/writeData/decoyVaultEngl23MKV_3" + count + ".csv";
                     CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                    for (int i = 0; i < 2000; i++) {
+                    for (int i = 0; i < 10; i++) {
                         List<String> decode = null;
                         boolean foundInvalid = true;
                         while (foundInvalid) {
@@ -607,29 +611,29 @@ public class VaultController {
         }
 
 
-        Thread myThread1 = new Thread(new Runnable() {
-            public void run() {
-                System.out.println("jinru thread Engl23MKV_3");
-                String path = "/writeData/decoyVaultEngl23MKV_1.csv";
-                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 300000; i++) {
-                    List<String> decode = null;
-                    boolean foundInvalid = true;
-                    while (foundInvalid) {
-                        String ranStr = genRandomStr();
-                        List<String> decoyVault = new ArrayList<>();
-                        decoyVault.add(ranStr);
-                        decode = encoderDecoderMarkovEngl.decode(decoyVault, mkv);
-                        foundInvalid = isFoundInvalidEngl(decode);
-                    }
-                    System.out.println(i + "Engl23MKV_3");
-                    writer1.writeLine(String.valueOf(decode));
-                }
-                writer1.close();
-                System.out.println("decoyVaultEngl23MKV_1成功");
-            }
-        });
-        myThread1.start();
+//        Thread myThread1 = new Thread(new Runnable() {
+//            public void run() {
+//                System.out.println("jinru thread Engl23MKV_3");
+//                String path = "/writeData/decoyVaultEngl23MKV_1.csv";
+//                CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
+//                for (int i = 0; i < 300000; i++) {
+//                    List<String> decode = null;
+//                    boolean foundInvalid = true;
+//                    while (foundInvalid) {
+//                        String ranStr = genRandomStr();
+//                        List<String> decoyVault = new ArrayList<>();
+//                        decoyVault.add(ranStr);
+//                        decode = encoderDecoderMarkovEngl.decode(decoyVault, mkv);
+//                        foundInvalid = isFoundInvalidEngl(decode);
+//                    }
+//                    System.out.println(i + "Engl23MKV_3");
+//                    writer1.writeLine(String.valueOf(decode));
+//                }
+//                writer1.close();
+//                System.out.println("decoyVaultEngl23MKV_1成功");
+//            }
+//        });
+//        myThread1.start();
 
         System.out.println("over, 23EnglMarkov");
 
@@ -690,7 +694,7 @@ public class VaultController {
                 System.out.println("jinru thread CN23list_1");
                 String path = "/writeData/decoyVaultCN23List_1.csv";
                 CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 150000; i++) {
+                for (int i = 0; i < 15; i++) {
                     List<String> decode = null;
                     boolean foundInvalid = true;
                     while (foundInvalid) {
@@ -714,7 +718,7 @@ public class VaultController {
                 System.out.println("jinru thread CN23list_3");
                 String path = "/writeData/decoyVaultCN23List_3.csv";
                 CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 150000; i++) {
+                for (int i = 0; i < 15; i++) {
                     List<String> decode = null;
                     boolean foundInvalid = true;
                     while (foundInvalid) {
@@ -763,7 +767,7 @@ public class VaultController {
                 System.out.println("jinru thread EN23list_1");
                 String path = "/writeData/decoyVaultEngl23List_1.csv";
                 CsvWriter writer1 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 300000; i++) {
+                for (int i = 0; i < 30; i++) {
                     List<String> decode = null;
                     boolean foundInvalid = true;
                     while (foundInvalid) {
@@ -787,7 +791,7 @@ public class VaultController {
                 System.out.println("jinru thread EN23list_3");
                 String path = "/writeData/decoyVaultEngl23List_3.csv";
                 CsvWriter writer3 = CsvUtil.getWriter(path, CharsetUtil.CHARSET_UTF_8);
-                for (int i = 0; i < 300000; i++) {
+                for (int i = 0; i < 30; i++) {
                     List<String> decode = null;
                     boolean foundInvalid = true;
                     while (foundInvalid) {

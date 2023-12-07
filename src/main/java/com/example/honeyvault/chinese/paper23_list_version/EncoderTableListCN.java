@@ -13,6 +13,8 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
@@ -170,13 +172,16 @@ public class EncoderTableListCN {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                path = path.replace("[", "");
-                path = path.replace("]", "");
-                String[] split = path.split(",");
-                for (String s : split) {
-                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
-                        continue;
-                    }
+                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
+                Matcher matcher = pattern.matcher(path);
+
+                // 提取操作元素
+                List<String> operations = new ArrayList<>();
+                while (matcher.find()) {
+                    operations.add(matcher.group());
+                }
+                for (String s : operations) {
+                    if (s.contains("()")) continue;
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);

@@ -11,7 +11,10 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
@@ -48,7 +51,7 @@ public class EncoderTableListEngl {
     Map<String, EncodeLine<String>> encodeTiOpProbTable;
 
     Map<String, Double> pswdFreqMap;
-    Map<String, EncodeLine<String>> pswdFreqEncodeTable;
+    Map<String, EncodeLine<String>> pswdFreqEncodeTable = new ConcurrentHashMap<>();
 
     Integer originPswdFreqSize = 0;
     BigInteger kNPlus1 = new BigInteger("0");
@@ -168,13 +171,16 @@ public class EncoderTableListEngl {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                path = path.replace("[", "");
-                path = path.replace("]", "");
-                String[] split = path.split(",");
-                for (String s : split) {
-                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
-                        continue;
-                    }
+                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
+                Matcher matcher = pattern.matcher(path);
+
+                // 提取操作元素
+                List<String> operations = new ArrayList<>();
+                while (matcher.find()) {
+                    operations.add(matcher.group());
+                }
+                for (String s : operations) {
+                    if (s.contains("()")) continue;
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -321,7 +327,7 @@ public class EncoderTableListEngl {
         BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
         BigDecimal lowerBound = BigDecimal.ZERO;
         BigDecimal upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

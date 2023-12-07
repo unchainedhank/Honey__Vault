@@ -684,7 +684,7 @@ public class EncoderDecoderWithoutPIICN {
                     }
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                    encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
+                    encoderTableWithourPII.encodeFirstMkvTable.putIfAbsent(randomStr, newRandomLine);
                     writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
                     decodedPswd.append(randomStr);
                 } else {

@@ -626,6 +626,9 @@ public class EncoderDecoderMarkovEngl {
                     }
 //              总共操作次数
                     int opsLength = hdTimes + tdTimes + hiTimes + tiTimes;
+                    if (hiTimes + tiTimes > 15) {
+                        return null;
+                    }
 //              具体操作list
                     Queue<String> finalOpList = new LinkedList<>();
                     if (timesLength > 0) {
@@ -661,6 +664,8 @@ public class EncoderDecoderMarkovEngl {
                     }
 //              找到baseString
                     String baseString = originPswd.get(g - 1);
+                   // System.out.println(baseString);
+                   // System.out.println(finalOpList);
 //              对baseString执行操作
                     for (String op : finalOpList) {
 //                        int openBracketIndex = op.indexOf("(");
@@ -670,11 +675,14 @@ public class EncoderDecoderMarkovEngl {
 //                        openBracketIndex) {
 //                            parameter = op.substring(openBracketIndex + 1, closeBracketIndex);
 //                        }
+                        //System.out.println(op);
                         parameter = op.substring(3, 4);
+                        //System.out.println(parameter);
                         if (op.contains("hd")) baseString = hd(baseString, parameter);
                         if (op.contains("td")) baseString = td(baseString, parameter);
                         if (op.contains("hi")) baseString = hi(baseString, parameter);
                         if (op.contains("ti")) baseString = ti(baseString, parameter);
+                        //System.out.println(baseString);
                     }
 //              加入到已解码列表中
                     decodedPswd.append(baseString);

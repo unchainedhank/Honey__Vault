@@ -906,10 +906,14 @@ public class EncoderDecoderWithoutPIIEngl {
                                 if (hiOnly && tiOnly) {
                                     BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(6), 2);
+
                                     Integer hiTimes = findOriginValue(encodedHiTimes,
                                             encoderTableWithourPIIEngl.encodeHiTimesProbTable);
                                     Integer tiTimes = findOriginValue(encodedTiTimes,
                                             encoderTableWithourPIIEngl.encodeTiTimesProbTable);
+                                    if (hiTimes + tiTimes > 15) {
+                                        return null;
+                                    }
                                     for (int i = 1; i <= hiTimes; i++) {
                                         BigInteger encodedHiOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
@@ -1146,6 +1150,9 @@ public class EncoderDecoderWithoutPIIEngl {
                                     BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(8), 2);
                                     Integer tiTimes = findOriginValue(encodedTiTimes,
                                             encoderTableWithourPIIEngl.encodeTiTimesProbTable);
+                                    if (hiTimes + tiTimes > 15) {
+                                        return null;
+                                    }
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(8 + i), 2);
                                         String hdOp = findOriginValue(encodedHdOp,

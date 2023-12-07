@@ -10,7 +10,10 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
@@ -54,7 +57,7 @@ public class EncoderTableMarkovCN {
     Map<String, EncodeLine<String>> absentMkv_1Table;
     Map<String, Double> absentMkv_1ProbMap;
 
-    int secParam_L;
+    int secParam_L=128;
     List<String> candidateList;
 
     @Resource
@@ -170,13 +173,16 @@ public class EncoderTableMarkovCN {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                path = path.replace("[", "");
-                path = path.replace("]", "");
-                String[] split = path.split(",");
-                for (String s : split) {
-                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
-                        continue;
-                    }
+                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
+                Matcher matcher = pattern.matcher(path);
+
+                // 提取操作元素
+                List<String> operations = new ArrayList<>();
+                while (matcher.find()) {
+                    operations.add(matcher.group());
+                }
+                for (String s : operations) {
+                    if (s.contains("()")) continue;
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -375,7 +381,7 @@ public class EncoderTableMarkovCN {
         double pow = Math.pow(2, secParam_L);
         double lowerBound = 0.0;
         double upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

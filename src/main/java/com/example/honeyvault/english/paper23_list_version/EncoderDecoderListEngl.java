@@ -497,8 +497,7 @@ public class EncoderDecoderListEngl {
                     }
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                    encoderTableListEngl.pswdFreqEncodeTable.put(randomStr, newRandomLine);
-                    writer.writeLine(String.valueOf(encoderTableListEngl.pswdFreqEncodeTable));
+                    encoderTableListEngl.pswdFreqEncodeTable.putIfAbsent(randomStr, newRandomLine);
                     decodedPswd.append(randomStr);
                 } else {
                     decodedPswd.append(pswd);
@@ -605,6 +604,9 @@ public class EncoderDecoderListEngl {
                     }
 //              总共操作次数
                     int opsLength = hdTimes + tdTimes + hiTimes + tiTimes;
+                    if (hiTimes + tiTimes > 15) {
+                        return null;
+                    }
 //              具体操作list
                     Queue<String> finalOpList = new LinkedList<>();
                     if (timesLength > 0) {
