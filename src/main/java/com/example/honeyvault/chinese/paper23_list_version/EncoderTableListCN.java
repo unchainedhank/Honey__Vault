@@ -3,6 +3,7 @@ package com.example.honeyvault.chinese.paper23_list_version;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.tool.PathInfo;
 import lombok.ToString;
 import org.springframework.stereotype.Component;
 
@@ -115,7 +116,11 @@ public class EncoderTableListCN {
         }
         kNPlus1 = maxEncodeLine.getUpperBound();
 
-        List<String> pathTrainSet = pathStatistic.getPathTrainSet();
+        List<PathInfo> pathInfoTrainSet = pathStatistic.getPathTrainSet();
+        List<String> pathTrainSet = new ArrayList<>();
+        pathInfoTrainSet.forEach(info ->{
+            pathTrainSet.add(info.getPath());
+        });
 
         ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
         ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
@@ -181,7 +186,9 @@ public class EncoderTableListCN {
                     operations.add(matcher.group());
                 }
                 for (String s : operations) {
-                    if (s.contains("()")) continue;
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
+                        continue;
+                    }
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -230,7 +237,7 @@ public class EncoderTableListCN {
     }
 
     Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        double originSize = opTimesMap.values().size();
         double factor = originSize + lambdaTimes * 15;
         for (int i = 1; i < 16; i++) {
             if (opTimesMap.containsKey(i)) {

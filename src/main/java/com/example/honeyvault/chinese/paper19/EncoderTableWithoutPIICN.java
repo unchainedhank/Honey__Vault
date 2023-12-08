@@ -11,7 +11,6 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Matcher;
@@ -101,7 +100,7 @@ public class EncoderTableWithoutPIICN {
     public Map<String, EncodeLine<String>> prTOpTable = new HashMap<>();
     public Map<String, EncodeLine<String>> prHOpTable = new HashMap<>();
 
-    int secParam_L=128;
+    int secParam_L;
     List<String> candidateList;
 
     @Resource
@@ -198,6 +197,16 @@ public class EncoderTableWithoutPIICN {
         List<String> pathTrainSet = pathStatistic.getPathTrainSetWithoutPII();
         List<String> passwds = markovStatistic.parseT12306WithoutPII();
 
+        hdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hd"), lambdaTimes);
+        hiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hi"), lambdaTimes);
+        tdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "td"), lambdaTimes);
+        tiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "ti"), lambdaTimes);
+        List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
+        hdOpProbMap = maps.get(0);
+        hiOpProbMap = maps.get(1);
+        tdOpProbMap = maps.get(2);
+        tiOpProbMap = maps.get(3);
+
         Pr_M_head = initProbM(pathTrainSet).get(0);
         Pr_M_tail = initProbM(pathTrainSet).get(1);
         Pr_M_headAndTail = initProbM(pathTrainSet).get(2);
@@ -234,15 +243,7 @@ public class EncoderTableWithoutPIICN {
         ifTdProbMap = initIfOpProbMap(pathTrainSet, "td");
         ifTiProbMap = initIfOpProbMap(pathTrainSet, "ti");
 
-        hdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hd"), lambdaTimes);
-        hiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hi"), lambdaTimes);
-        tdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "td"), lambdaTimes);
-        tiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "ti"), lambdaTimes);
-        List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
-        hdOpProbMap = maps.get(0);
-        hiOpProbMap = maps.get(1);
-        tdOpProbMap = maps.get(2);
-        tiOpProbMap = maps.get(3);
+
 
 
         encodePasswdLengthTable = probMap2EncodeTable(passwdLengthProbMap);
@@ -392,9 +393,12 @@ public class EncoderTableWithoutPIICN {
                     operations.add(matcher.group());
                 }
                 for (String s : operations) {
-                    if (s.contains("()")) continue;
-                    if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
-                    else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
+                        continue;
+                    }
+                    if (s.contains("hd")) {
+                        hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
+                    } else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("ti")) tiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                 }
@@ -441,7 +445,7 @@ public class EncoderTableWithoutPIICN {
     }
 
     Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        double originSize = opTimesMap.values().size();
         double factor = originSize + lambdaTimes * 11;
         for (int i = 1; i < 12; i++) {
             if (opTimesMap.containsKey(i)) {
@@ -522,7 +526,7 @@ public class EncoderTableWithoutPIICN {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
         double lowerBound = 0.0;
         double upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

@@ -11,16 +11,13 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTableWithoutPIIEngl {
+public class EncoderTableWithoutPIIENG {
     /*
     1. g(dynamic)
     2. length
@@ -101,7 +98,7 @@ public class EncoderTableWithoutPIIEngl {
     public Map<String, EncodeLine<String>> prTOpTable = new HashMap<>();
     public Map<String, EncodeLine<String>> prHOpTable = new HashMap<>();
 
-    int secParam_L=128;
+    int secParam_L;
     List<String> candidateList;
 
     @Resource
@@ -131,27 +128,15 @@ public class EncoderTableWithoutPIIEngl {
     }
 
     private void initPrMTable(double pr_M_head, double pr_M_tail, double pr_M_headAndTail) {
-        BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
-        BigInteger value1 = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
+        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
+        BigInteger lowerBound = pow.multiply(BigDecimal.valueOf(pr_M_head)).toBigInteger();
         EncodeLine<String> pr_m_head =
-                EncodeLine.<String>builder()
-                        .prob(pr_M_head)
-                        .originValue("pr_M_head")
-                        .lowerBound(BigInteger.valueOf(0))
-                        .upperBound(value1).build();
-        BigDecimal value2 = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
+                EncodeLine.<String>builder().prob(pr_M_head).originValue("pr_M_head").lowerBound(BigInteger.valueOf(0)).upperBound(lowerBound).build();
+        BigDecimal mid = pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail));
         EncodeLine<String> pr_m_tail =
-                EncodeLine.<String>builder()
-                        .prob(pr_M_tail)
-                        .originValue("pr_M_tail")
-                        .lowerBound(value1)
-                        .upperBound(value2.toBigInteger()).build();
+                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_tail").lowerBound(lowerBound).upperBound(mid.toBigInteger()).build();
         EncodeLine<String> pr_m_headAndTail =
-                EncodeLine.<String>builder()
-                        .prob(pr_M_headAndTail)
-                        .originValue("pr_M_headAndTail")
-                        .lowerBound(value2.toBigInteger())
-                        .upperBound(pow.toBigInteger()).build();
+                EncodeLine.<String>builder().prob(pr_M_tail).originValue("pr_M_headAndTail").lowerBound(mid.toBigInteger()).upperBound(pow.multiply(BigDecimal.valueOf(pr_M_head + pr_M_tail + pr_M_headAndTail)).toBigInteger()).build();
         prMTable.put("pr_M_head", pr_m_head);
         prMTable.put("pr_M_tail", pr_m_tail);
         prMTable.put("pr_M_headAndTail", pr_m_headAndTail);
@@ -165,8 +150,6 @@ public class EncoderTableWithoutPIIEngl {
         EncodeLine<String> pr_h_delete =
                 EncodeLine.<String>builder().prob(pr_H_delete).originValue("pr_H_delete").lowerBound(pow.multiply(new BigDecimal(pr_H_insert)).toBigInteger()).upperBound(mid).build();
         EncodeLine<String> pr_h_deleteAndInsert =
-//                EncodeLine.<String>builder().prob(pr_H_deleteAndInsert).originValue("pr_H_deleteAndInsert")
-//                .lowerBound(mid).upperBound(pow.toBigInteger()).build();
                 EncodeLine.<String>builder().prob(pr_H_deleteAndInsert).originValue("pr_H_deleteAndInsert").lowerBound(mid).upperBound(pow.multiply(BigDecimal.valueOf(pr_H_insert + pr_H_delete + pr_H_deleteAndInsert)).toBigInteger()).build();
         prHOpTable.put("pr_H_insert", pr_h_insert);
         prHOpTable.put("pr_H_delete", pr_h_delete);
@@ -183,8 +166,6 @@ public class EncoderTableWithoutPIIEngl {
         EncodeLine<String> pr_t_delete =
                 EncodeLine.<String>builder().prob(pr_T_delete).originValue("pr_T_delete").lowerBound(upperBound).upperBound(floor).build();
         EncodeLine<String> pr_t_deleteAndInsert =
-//                EncodeLine.<String>builder().prob(pr_T_deleteAndInsert).originValue("pr_T_deleteAndInsert")
-//                .lowerBound(floor).upperBound(pow.toBigInteger()).build();
                 EncodeLine.<String>builder().prob(pr_T_deleteAndInsert).originValue("pr_T_deleteAndInsert").lowerBound(floor).upperBound(pow.multiply(BigDecimal.valueOf(pr_T_insert + pr_T_delete + pr_T_deleteAndInsert)).toBigInteger()).build();
         prTOpTable.put("pr_T_insert", pr_t_insert);
         prTOpTable.put("pr_T_delete", pr_t_delete);
@@ -192,11 +173,41 @@ public class EncoderTableWithoutPIIEngl {
     }
 
 
-    public void buildEncodeTablesWithoutPII(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp,
-                                            double lambdaTimes) {
+    public void buildEncodeTablesWithoutPII(int mkv,double lambdaMkv,double lambdaMkv_1,double lambdaOp,double lambdaTimes) {
         Set<PathAndAlphaUser> userVaultSet = pathStatistic.parsePswdsWithoutPII();
         List<String> pathTrainSet = pathStatistic.getPathTrainSetWithoutPII();
         List<String> passwds = markovStatistic.parseT12306WithoutPII();
+
+        int mkv_1 = mkv + 1;
+        secParam_L = 128;
+        passwdLengthProbMap = initPasswdLengthProbMap(userVaultSet);
+
+        firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
+        System.out.println(firstMkvProbMap.size());
+        buildAbsentMkv6Table();
+
+
+        everyMkv_1ProbMap = getMkv_1(passwds, mkv_1, lambdaMkv_1);
+        System.out.println(everyMkv_1ProbMap.size());
+        everyMkv_1ProbMap.forEach((prefix, map) -> {
+            Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
+            encodeEveryMkv_1Table.put(prefix, stringEncodeTableLineMap);
+        });
+
+        ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
+        ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
+        ifTdProbMap = initIfOpProbMap(pathTrainSet, "td");
+        ifTiProbMap = initIfOpProbMap(pathTrainSet, "ti");
+
+        hdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hd"),lambdaTimes);
+        hiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hi"),lambdaTimes);
+        tdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "td"),lambdaTimes);
+        tiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "ti"),lambdaTimes);
+        List<Map<String, Double>> maps = initProbMap(pathTrainSet,lambdaOp);
+        hdOpProbMap = maps.get(0);
+        hiOpProbMap = maps.get(1);
+        tdOpProbMap = maps.get(2);
+        tiOpProbMap = maps.get(3);
 
         Pr_M_head = initProbM(pathTrainSet).get(0);
         Pr_M_tail = initProbM(pathTrainSet).get(1);
@@ -215,34 +226,6 @@ public class EncoderTableWithoutPIIEngl {
         initPrMTable(Pr_M_head, Pr_M_tail, Pr_M_headAndTail);
         initPrTOpTable(Pr_T_insert, Pr_T_delete, Pr_T_deleteAndInsert);
         initPrHOpTable(Pr_H_insert, Pr_H_delete, Pr_H_deleteAndInsert);
-
-        int mkv_1 = mkv + 1;
-        secParam_L = 128;
-        passwdLengthProbMap = initPasswdLengthProbMap(userVaultSet);
-
-        firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
-        buildAbsentMkv6Table();
-
-        everyMkv_1ProbMap = getMkv_1(passwds, mkv_1, lambdaMkv_1);
-        everyMkv_1ProbMap.forEach((prefix, map) -> {
-            Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
-            encodeEveryMkv_1Table.put(prefix, stringEncodeTableLineMap);
-        });
-
-        ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
-        ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
-        ifTdProbMap = initIfOpProbMap(pathTrainSet, "td");
-        ifTiProbMap = initIfOpProbMap(pathTrainSet, "ti");
-
-        hdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hd"), lambdaTimes);
-        hiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hi"), lambdaTimes);
-        tdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "td"), lambdaTimes);
-        tiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "ti"), lambdaTimes);
-        List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
-        hdOpProbMap = maps.get(0);
-        hiOpProbMap = maps.get(1);
-        tdOpProbMap = maps.get(2);
-        tiOpProbMap = maps.get(3);
 
 
         encodePasswdLengthTable = probMap2EncodeTable(passwdLengthProbMap);
@@ -303,15 +286,17 @@ public class EncoderTableWithoutPIIEngl {
         pathTrainSet.forEach(path -> {
             boolean isHeadModified = path.contains("hd") || path.contains("hi");
             boolean isTailModified = path.contains("td") || path.contains("ti");
-            if (!"[]".equals(path)) {
+            if (!path.equals("[]")) {
                 pathCount.add(1);
+            }
+            if (isHeadModified && !isTailModified) {
+                headCount.add(1);
+            }
+            if (!isHeadModified && isTailModified) {
+                tailCount.add(1);
             }
             if (isHeadModified && isTailModified) {
                 headAndTailCount.add(1);
-            } else if (isHeadModified) {
-                headCount.add(1);
-            } else if (isTailModified) {
-                tailCount.add(1);
             }
         });
         List<Double> result = new ArrayList<>();
@@ -335,17 +320,14 @@ public class EncoderTableWithoutPIIEngl {
                 if (!path.equals("[]")) {
                     int hd = countOccurrences(path, "hd");
                     int hi = countOccurrences(path, "hi");
-                    if (hd > 0 || hi > 0) {
-                        if (hd > 0 && hi == 0) {
-                            delete.add(1);
-                        } else if (hd == 0 && hi > 0) {
-                            insert.add(1);
-                        } else if (hd > 0 && hi > 0) {
-                            insert_delete.add(1);
-                        }
-                        pathCount.add(1);
+                    if (hd > 0 && hi == 0) {
+                        delete.add(1);
+                    } else if (hd == 0 && hi > 0) {
+                        insert.add(1);
+                    } else if (hd > 0 && hi > 0) {
+                        insert_delete.add(1);
                     }
-
+                    pathCount.add(1);
                 }
             });
         } else {
@@ -354,16 +336,14 @@ public class EncoderTableWithoutPIIEngl {
                 if (!path.equals("[]")) {
                     int td = countOccurrences(path, "td");
                     int ti = countOccurrences(path, "ti");
-                    if (td > 0 || ti > 0) {
-                        if (td > 0 && ti == 0) {
-                            delete.add(1);
-                        } else if (td == 0 && ti > 0) {
-                            insert.add(1);
-                        } else if (td > 0 && ti > 0) {
-                            insert_delete.add(1);
-                        }
-                        pathCount.add(1);
+                    if (td > 0 && ti == 0) {
+                        delete.add(1);
+                    } else if (td == 0 && ti > 0) {
+                        insert.add(1);
+                    } else if (td > 0 && ti > 0) {
+                        insert_delete.add(1);
                     }
+                    pathCount.add(1);
                 }
             });
         }
@@ -375,7 +355,7 @@ public class EncoderTableWithoutPIIEngl {
         return res;
     }
 
-    private List<Map<String, Double>> initProbMap(List<String> pathTrainSet, double lambdaOp) {
+    private List<Map<String, Double>> initProbMap(List<String> pathTrainSet,double lambdaOp) {
 
         Map<String, Double> hdOpProbMap = new LinkedHashMap<>();
         Map<String, Double> hiOpProbMap = new LinkedHashMap<>();
@@ -383,16 +363,11 @@ public class EncoderTableWithoutPIIEngl {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
-                Matcher matcher = pattern.matcher(path);
-
-                // 提取操作元素
-                List<String> operations = new ArrayList<>();
-                while (matcher.find()) {
-                    operations.add(matcher.group());
-                }
-                for (String s : operations) {
-                    if (s.contains("()")) continue;
+                String[] split = path.split(",");
+                for (String s : split) {
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
+                        continue;
+                    }
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -402,14 +377,14 @@ public class EncoderTableWithoutPIIEngl {
         });
 
         List<Map<String, Double>> mList = new ArrayList<>();
-        mList.add(smoothOpProbMap(hdOpProbMap, "hd", lambdaOp));
-        mList.add(smoothOpProbMap(hiOpProbMap, "hi", lambdaOp));
-        mList.add(smoothOpProbMap(tdOpProbMap, "td", lambdaOp));
-        mList.add(smoothOpProbMap(tiOpProbMap, "ti", lambdaOp));
+        mList.add(smoothOpProbMap(hdOpProbMap, "hd",lambdaOp));
+        mList.add(smoothOpProbMap(hiOpProbMap, "hi",lambdaOp));
+        mList.add(smoothOpProbMap(tdOpProbMap, "td",lambdaOp));
+        mList.add(smoothOpProbMap(tiOpProbMap, "ti",lambdaOp));
         return mList;
     }
 
-    Map<String, Double> smoothOpProbMap(Map<String, Double> opProbMap, String opName, double lambdaOp) {
+    Map<String, Double> smoothOpProbMap(Map<String, Double> opProbMap, String opName,double lambdaOp) {
 
 
         double originSize = opProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -440,8 +415,8 @@ public class EncoderTableWithoutPIIEngl {
         return calculateFrequency(countOp);
     }
 
-    Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
+    Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap,double lambdaTimes) {
+        double originSize = opTimesMap.values().size();
         double factor = originSize + lambdaTimes * 11;
         for (int i = 1; i < 12; i++) {
             if (opTimesMap.containsKey(i)) {
@@ -522,7 +497,7 @@ public class EncoderTableWithoutPIIEngl {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, secParam_L));
         double lowerBound = 0.0;
         double upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

@@ -1,8 +1,10 @@
 package com.example.honeyvault.chinese.paper23_markov_version;
 
+import cn.hutool.core.lang.Pair;
 import com.example.honeyvault.data_access.*;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.tool.PathInfo;
 import lombok.ToString;
 import org.springframework.stereotype.Component;
 
@@ -10,10 +12,10 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
@@ -24,14 +26,13 @@ public class EncoderTableMarkovCN {
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> firstMkvProbMap;
     HashMap<String, HashMap<String, Double>> everyMkv_1ProbMap;
-    Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;
-    Map<Integer, Double> ifTdProbMap;
     Map<Integer, Double> ifTiProbMap;
-    Map<Integer, Double> hdTimesProbMap;
+    Map<Integer, Double> ifDProbMap;
+
     Map<Integer, Double> hiTimesProbMap;
-    Map<Integer, Double> tdTimesProbMap;
     Map<Integer, Double> tiTimesProbMap;
+    Map<Integer, Double> dTimesProbMap;
     Map<String, Double> hdOpProbMap;
     Map<String, Double> hiOpProbMap;
     Map<String, Double> tdOpProbMap;
@@ -41,14 +42,13 @@ public class EncoderTableMarkovCN {
     Map<Integer, EncodeLine<Integer>> encodePasswdLengthTable;
     Map<String, EncodeLine<String>> encodefirstMkvTable;
     Map<String, Map<String, EncodeLine<String>>> encodeEveryMkv_1Table = new HashMap<>();
-    Map<Integer, EncodeLine<Integer>> encodeIfHdProbTable;
     Map<Integer, EncodeLine<Integer>> encodeIfHiProbTable;
-    Map<Integer, EncodeLine<Integer>> encodeIfTdProbTable;
     Map<Integer, EncodeLine<Integer>> encodeIfTiProbTable;
-    Map<Integer, EncodeLine<Integer>> encodeHdTimesProbTable;
+    Map<Integer, EncodeLine<Integer>> encodeIfDProbTable;
     Map<Integer, EncodeLine<Integer>> encodeHiTimesProbTable;
-    Map<Integer, EncodeLine<Integer>> encodeTdTimesProbTable;
     Map<Integer, EncodeLine<Integer>> encodeTiTimesProbTable;
+//    k, (hdTime,tdTimes)->encodeLine
+    Map<Integer, Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>>> encodeDTimesProbTable;
     Map<String, EncodeLine<String>> encodeHdOpProbTable;
     Map<String, EncodeLine<String>> encodeHiOpProbTable;
     Map<String, EncodeLine<String>> encodeTdOpProbTable;
@@ -57,7 +57,7 @@ public class EncoderTableMarkovCN {
     Map<String, EncodeLine<String>> absentMkv_1Table;
     Map<String, Double> absentMkv_1ProbMap;
 
-    int secParam_L=128;
+    int secParam_L;
     List<String> candidateList;
 
     @Resource
@@ -98,6 +98,16 @@ public class EncoderTableMarkovCN {
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap(passwds);
         firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
+        List<PathInfo> pathInfoTrainSet = pathStatistic.getPathTrainSet();
+        List<String> pathTrainSet = new ArrayList<>();
+        pathInfoTrainSet.forEach(info -> {
+            pathTrainSet.add(info.getPath());
+        });
+        List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
+        hdOpProbMap = maps.get(0);
+        hiOpProbMap = maps.get(1);
+        tdOpProbMap = maps.get(2);
+        tiOpProbMap = maps.get(3);
         buildAbsentMkv_1Table();
         int mkv_1 = mkv + 1;
         everyMkv_1ProbMap = getMkv_1(passwds, mkv_1, lambdaMkv_1);
@@ -106,22 +116,27 @@ public class EncoderTableMarkovCN {
             encodeEveryMkv_1Table.putIfAbsent(prefix, stringEncodeTableLineMap);
         });
 
-        List<String> pathTrainSet = pathStatistic.getPathTrainSet();
 
-        ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
         ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
-        ifTdProbMap = initIfOpProbMap(pathTrainSet, "td");
         ifTiProbMap = initIfOpProbMap(pathTrainSet, "ti");
+        ifDProbMap = initIfOpProbMap(pathTrainSet, "d");
 
-        hdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hd"), lambdaTimes);
         hiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "hi"), lambdaTimes);
-        tdTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "td"), lambdaTimes);
         tiTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "ti"), lambdaTimes);
-        List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
-        hdOpProbMap = maps.get(0);
-        hiOpProbMap = maps.get(1);
-        tdOpProbMap = maps.get(2);
-        tiOpProbMap = maps.get(3);
+//      length:k->path
+        Map<Integer, List<String>> groupedByLength =
+                pathInfoTrainSet.stream().collect(Collectors.groupingBy(PathInfo::getLength,
+                        Collectors.mapping(PathInfo::getPath, Collectors.toList())));
+        groupedByLength.forEach((k, path) -> {
+            Map<Pair<Integer, Integer>, Integer> dTimesMap = getDTimes(path, k);
+//          (hdTime,tdTimes)->prob
+            Map<Pair<Integer, Integer>, Double> dTimeProbMap = smoothDTimesMap(dTimesMap, lambdaTimes, k);
+            Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> dTimeEncodeLine =
+                    probMap2EncodeTable(dTimeProbMap);
+            encodeDTimesProbTable.put(k, dTimeEncodeLine);
+        });
+        dTimesProbMap = smoothTimesMap(getOpCountProbMap(pathTrainSet, "d"), lambdaTimes);
+
 
 //        secParam_L = calL();
 
@@ -129,13 +144,10 @@ public class EncoderTableMarkovCN {
         encodefirstMkvTable = probMap2EncodeTable(firstMkvProbMap);
 
 //        encodeEveryMkv_1Table = probMap2EncodeTable(everyMkv_1ProbMap);
-        encodeIfHdProbTable = probMap2EncodeTable(ifHdProbMap);
         encodeIfHiProbTable = probMap2EncodeTable(ifHiProbMap);
-        encodeIfTdProbTable = probMap2EncodeTable(ifTdProbMap);
         encodeIfTiProbTable = probMap2EncodeTable(ifTiProbMap);
-        encodeHdTimesProbTable = probMap2EncodeTable(hdTimesProbMap);
+        encodeIfDProbTable = probMap2EncodeTable(ifDProbMap);
         encodeHiTimesProbTable = probMap2EncodeTable(hiTimesProbMap);
-        encodeTdTimesProbTable = probMap2EncodeTable(tdTimesProbMap);
         encodeTiTimesProbTable = probMap2EncodeTable(tiTimesProbMap);
         encodeHdOpProbTable = probMap2EncodeTable(hdOpProbMap);
         encodeHiOpProbTable = probMap2EncodeTable(hiOpProbMap);
@@ -154,11 +166,20 @@ public class EncoderTableMarkovCN {
     private Map<Integer, Double> initIfOpProbMap(List<String> pathTrainSet, String op) {
         Map<Integer, Double> ifOpProb = new HashMap<>();
         LongAdder ifOpCount = new LongAdder();
-        pathTrainSet.forEach(path -> {
-            if (path.contains(op)) {
-                ifOpCount.add(1);
-            }
-        });
+        if (op.equals("d")) {
+            pathTrainSet.forEach(path -> {
+                if (path.contains("hd") || path.contains("td")) {
+                    ifOpCount.add(1);
+                }
+            });
+        } else {
+            pathTrainSet.forEach(path -> {
+                if (path.contains(op)) {
+                    ifOpCount.add(1);
+                }
+            });
+        }
+
         double prOp = ifOpCount.doubleValue() / pathTrainSet.size();
         ifOpProb.put(1, prOp);
         ifOpProb.put(0, 1 - prOp);
@@ -182,7 +203,9 @@ public class EncoderTableMarkovCN {
                     operations.add(matcher.group());
                 }
                 for (String s : operations) {
-                    if (s.contains("()")) continue;
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
+                        continue;
+                    }
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -217,70 +240,99 @@ public class EncoderTableMarkovCN {
         return opProbMap;
     }
 
-    Map<Integer, Double> getOpCountProbMap(List<String> pathTrainSet, String op) {
-        Map<Integer, Double> countOp = new LinkedHashMap<>();
+    Map<Integer, Integer> getOpCountProbMap(List<String> pathTrainSet, String op) {
+        Map<Integer, Integer> countOp = new LinkedHashMap<>();
         for (String path : pathTrainSet) {
             if (path != null) {
                 int opTimes = countOccurrencesOfOp(path, op);
-                if (opTimes >= 1 && opTimes < 16) {
-                    countOp.merge(opTimes, 1.0, Double::sum);
+                if (opTimes >= 1 && opTimes < 9) {
+                    countOp.merge(opTimes, 1, Integer::sum);
                 }
             }
         }
-        return calculateFrequency(countOp);
+        return countOp;
     }
 
-    Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambdaTimes * 15;
-        for (int i = 1; i < 16; i++) {
-            if (opTimesMap.containsKey(i)) {
-                opTimesMap.put(i, (opTimesMap.get(i) + lambdaTimes) / factor);
-            } else {
-                opTimesMap.put(i, lambdaTimes / factor);
+    Map<Pair<Integer, Integer>, Integer> getDTimes(List<String> pathList, int k) {
+        Map<Pair<Integer, Integer>, Integer> countOp = new LinkedHashMap<>();
+        for (String path : pathList) {
+            if (path != null) {
+                int tdTimes = countOccurrencesOfOp(path, "td");
+                int hdTimes = countOccurrencesOfOp(path, "hd");
+                int opTimes = tdTimes + hdTimes;
+                if (opTimes >= 1 && opTimes < k) {
+                    countOp.merge(new Pair<>(hdTimes, tdTimes), 1, Integer::sum);
+                }
             }
         }
-        return opTimesMap;
+        return countOp;
     }
 
-    int calL() {
-        double log2 = Math.log(2);
-        double L_min_firstMkvProbMap = Math.abs(Math.log(Collections.min(firstMkvProbMap.values())) / log2);
-//        double L_min_everyMkv_1ProbMap = Math.abs(Math.log(Collections.min(everyMkv_1ProbMap.values())) / log2);
-        double L_min_ifHdProbMap = Math.abs(Math.log(Collections.min(ifHdProbMap.values())) / log2);
-        double L_min_ifHiProbMap = Math.abs(Math.log(Collections.min(ifHiProbMap.values())) / log2);
-        double L_min_ifTdProbMap = Math.abs(Math.log(Collections.min(ifTdProbMap.values())) / log2);
-        double L_min_ifTiProbMap = Math.abs(Math.log(Collections.min(ifTiProbMap.values())) / log2);
-        double L_min_hdTimesProbMap = Math.abs(Math.log(Collections.min(hdTimesProbMap.values())) / log2);
-        double L_min_hiTimesProbMap = Math.abs(Math.log(Collections.min(hiTimesProbMap.values())) / log2);
-        double L_min_tdTimesProbMap = Math.abs(Math.log(Collections.min(tdTimesProbMap.values())) / log2);
-        double L_min_tiTimesProbMap = Math.abs(Math.log(Collections.min(tiTimesProbMap.values())) / log2);
-        double L_min_hdOpProbMap = Math.abs(Math.log(Collections.min(hdOpProbMap.values())) / log2);
-        double L_min_hiOpProbMap = Math.abs(Math.log(Collections.min(hiOpProbMap.values())) / log2);
-        double L_min_tdOpProbMap = Math.abs(Math.log(Collections.min(tdOpProbMap.values())) / log2);
-        double L_min_tiOpProbMap = Math.abs(Math.log(Collections.min(tiOpProbMap.values())) / log2);
-        Set<Double> mins = new HashSet<>();
-        mins.add(L_min_firstMkvProbMap);
-//        mins.add(L_min_everyMkv_1ProbMap);
-        mins.add(L_min_ifHdProbMap);
-        mins.add(L_min_ifHiProbMap);
-        mins.add(L_min_ifTdProbMap);
-        mins.add(L_min_ifTiProbMap);
-        mins.add(L_min_hdTimesProbMap);
-        mins.add(L_min_hiTimesProbMap);
-        mins.add(L_min_tdTimesProbMap);
-        mins.add(L_min_tiTimesProbMap);
-        mins.add(L_min_hdOpProbMap);
-        mins.add(L_min_hiOpProbMap);
-        mins.add(L_min_tdOpProbMap);
-        mins.add(L_min_tiOpProbMap);
-        int max = Collections.max(mins).intValue();
-        // 实验证明
-        int L_g = 12;
-        int calL = Math.max(L_g, max);
-        if (calL < 16) calL = 16;
-        return calL;
+    Map<Pair<Integer, Integer>, Double> smoothDTimesMap(Map<Pair<Integer, Integer>, Integer> opTimesMap,
+                                                        double lambdaTimes, int k1) {
+        Map<Pair<Integer, Integer>, Double> opTimesProbMap = new HashMap<>();
+        double originSize = opTimesMap.size();
+        for (int i = 0; i < k1; i++) {
+            for (int j = 0; j < k1 - i; j++) {
+                if ((i + j) > 0) {
+                    double factor = originSize + (((double)k1 - 1) * (double)k1 / 2 * lambdaTimes);
+                    if (opTimesMap.containsKey(new Pair<>(i, j))) {
+                        opTimesProbMap.put(new Pair<>(i, j),
+                                (opTimesMap.get(new Pair<>(i, j)) + lambdaTimes) / factor);
+                    } else {
+                        opTimesProbMap.put(new Pair<>(i, j),
+                                lambdaTimes / factor);
+                    }
+                }
+            }
+        }
+        return opTimesProbMap;
     }
+
+    Map<Integer, Double> smoothTimesMap(Map<Integer, Integer> opTimesMap, double lambdaTimes) {
+        double originSize = opTimesMap.values().stream().mapToDouble(Integer::doubleValue).sum();
+        double factor = originSize + lambdaTimes * 8;
+        Map<Integer, Double> opTimesProbMap = new HashMap<>();
+        for (int i = 1; i < 9; i++) {
+            if (opTimesMap.containsKey(i)) {
+                opTimesProbMap.put(i, (opTimesMap.get(i) + lambdaTimes) / factor);
+            } else {
+                opTimesProbMap.put(i, lambdaTimes / factor);
+            }
+        }
+        return opTimesProbMap;
+    }
+
+//    int calL() {
+//        double log2 = Math.log(2);
+//        double L_min_firstMkvProbMap = Math.abs(Math.log(Collections.min(firstMkvProbMap.values())) / log2);
+////        double L_min_everyMkv_1ProbMap = Math.abs(Math.log(Collections.min(everyMkv_1ProbMap.values())) / log2);
+//        double L_min_ifHiProbMap = Math.abs(Math.log(Collections.min(ifHiProbMap.values())) / log2);
+//        double L_min_ifTiProbMap = Math.abs(Math.log(Collections.min(ifTiProbMap.values())) / log2);
+//        double L_min_hiTimesProbMap = Math.abs(Math.log(Collections.min(hiTimesProbMap.values())) / log2);
+//        double L_min_tiTimesProbMap = Math.abs(Math.log(Collections.min(tiTimesProbMap.values())) / log2);
+//        double L_min_hdOpProbMap = Math.abs(Math.log(Collections.min(hdOpProbMap.values())) / log2);
+//        double L_min_hiOpProbMap = Math.abs(Math.log(Collections.min(hiOpProbMap.values())) / log2);
+//        double L_min_tdOpProbMap = Math.abs(Math.log(Collections.min(tdOpProbMap.values())) / log2);
+//        double L_min_tiOpProbMap = Math.abs(Math.log(Collections.min(tiOpProbMap.values())) / log2);
+//        Set<Double> mins = new HashSet<>();
+//        mins.add(L_min_firstMkvProbMap);
+////        mins.add(L_min_everyMkv_1ProbMap);
+//        mins.add(L_min_ifHiProbMap);
+//        mins.add(L_min_ifTiProbMap);
+//        mins.add(L_min_hiTimesProbMap);
+//        mins.add(L_min_tiTimesProbMap);
+//        mins.add(L_min_hdOpProbMap);
+//        mins.add(L_min_hiOpProbMap);
+//        mins.add(L_min_tdOpProbMap);
+//        mins.add(L_min_tiOpProbMap);
+//        int max = Collections.max(mins).intValue();
+//        // 实验证明
+//        int L_g = 12;
+//        int calL = Math.max(L_g, max);
+//        if (calL < 16) calL = 16;
+//        return calL;
+//    }
 
 
     //    Tools
@@ -381,7 +433,7 @@ public class EncoderTableMarkovCN {
         double pow = Math.pow(2, secParam_L);
         double lowerBound = 0.0;
         double upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();

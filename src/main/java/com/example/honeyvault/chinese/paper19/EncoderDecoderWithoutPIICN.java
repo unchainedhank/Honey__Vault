@@ -30,53 +30,8 @@ public class EncoderDecoderWithoutPIICN {
     private Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new HashMap<>();
 
     public void init(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp, double lambdaTimes) {
-
-        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin19.csv", CharsetUtil.CHARSET_UTF_8);
-
 //        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
-
         encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
-
-        writer.writeLine("encodeFirstMkvTable"+encoderTableWithourPII.encodeFirstMkvTable);
-        writer.writeLine(" ");
-      //  writer.writeLine("encodeEveryMkv_1Table"+encoderTableWithourPII.encodeEveryMkv_1Table);
-        writer.writeLine(" ");
-        writer.writeLine("absentMkv_1Table"+encoderTableWithourPII.absentMkv_1Table);
-        writer.writeLine(" ");
-        writer.writeLine("encodePasswdLengthTable"+encoderTableWithourPII.encodePasswdLengthTable);
-        writer.writeLine(" ");
-        writer.writeLine("prMTable"+encoderTableWithourPII.prMTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeIfHdProbTable"+encoderTableWithourPII.encodeIfHdProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeIfTiProbTable"+encoderTableWithourPII.encodeIfTiProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeIfTdProbTable"+encoderTableWithourPII.encodeIfTdProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeIfHiProbTable"+encoderTableWithourPII.encodeIfHiProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeHdTimesProbTable"+encoderTableWithourPII.encodeHdTimesProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeHiTimesProbTable"+encoderTableWithourPII.encodeHiTimesProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeTdTimesProbTable"+encoderTableWithourPII.encodeTdTimesProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeTiTimesProbTable"+encoderTableWithourPII.encodeTiTimesProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeHiOpProbTable"+encoderTableWithourPII.encodeHiOpProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeHdOpProbTable"+encoderTableWithourPII.encodeHdOpProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeTiOpProbTable"+encoderTableWithourPII.encodeTiOpProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("encodeTdOpProbTable"+encoderTableWithourPII.encodeTdOpProbTable);
-        writer.writeLine(" ");
-        writer.writeLine("prHOpTable"+encoderTableWithourPII.prHOpTable);
-        writer.writeLine(" ");
-        writer.writeLine("prTOpTable"+encoderTableWithourPII.prTOpTable);
-        writer.writeLine(" ");
-        writer.close();
-
 //        writer.writeLine("encodeHdOpProbTable" + ":" + encoderTableWithourPII.encodeHdOpProbTable);
 //        writer.writeLine("encodeHiOpProbTable" + ":" + encoderTableWithourPII.encodeHiOpProbTable);
 //        writer.writeLine("encodeTdOpProbTable" + ":" + encoderTableWithourPII.encodeTdOpProbTable);
@@ -95,7 +50,6 @@ public class EncoderDecoderWithoutPIICN {
 ////        writer.writeLine("encodeEveryMkv_1Table" + ":" + encoderTableWithourPII.encodeEveryMkv_1Table);
 //        writer.writeLine("encodePasswdLengthTable" + ":" + encoderTableWithourPII.encodePasswdLengthTable);
 //        writer.close();
-
     }
 
 //    @PostConstruct
@@ -105,7 +59,7 @@ public class EncoderDecoderWithoutPIICN {
 
     private void initPr_DR() {
         BigDecimal pow = BigDecimal.valueOf(Math.pow(2, encoderTableWithourPII.secParam_L));
-        for (int j = 0; j < 23; j++) {
+        for (int j = 1; j < 23; j++) {
             double alpha = 0.5690178377522002;
             double prob = (j * alpha) / (j * alpha + 1 - alpha);
             Pair<Integer, Boolean> i_true = new Pair<>(j, Boolean.TRUE);
@@ -116,19 +70,15 @@ public class EncoderDecoderWithoutPIICN {
                     EncodeLine.<Pair<Integer, Boolean>>builder().prob(prob).originValue(i_true).lowerBound(BigInteger.valueOf(0)).upperBound(
                             upperBound).build();
             EncodeLine<Pair<Integer, Boolean>> falseLine =
-                    EncodeLine.<Pair<Integer, Boolean>>builder().prob(prob).originValue(i_false).lowerBound(upperBound).upperBound(pow.toBigInteger()).build();
+                    EncodeLine.<Pair<Integer, Boolean>>builder().prob(1 - prob).originValue(i_false).lowerBound(upperBound).upperBound(pow.toBigInteger()).build();
             prDrEncodeLineMap.put(new Pair<>(j, true), trueLine);
             prDrEncodeLineMap.put(new Pair<>(j, false), falseLine);
         }
-
 //        System.out.println(prDrEncodeLineMap);
-
     }
 
-    public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, int mkv, double lambdaOp,
-                                             double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
+    public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, int mkv, double lambdaMkv) {
 //        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv);
-        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
         List<String> vault = initVault(initVault);
         Map<Pair<Integer, Integer>, Double> pathProbMap = new HashMap<>();
         List<Pair<String, String>> pswd2EncodeString = new LinkedList<>();
@@ -227,11 +177,11 @@ public class EncoderDecoderWithoutPIICN {
         double col2;
         double lower = 0, upper;
         if (g == 0) {
-            upper = Math.floor(pow *(1 - f_fit(i-1)));
+            upper = Math.floor(pow * (1 - f_fit(i - 1)));
         } else {
-            col2 = f_fit(i-1) / (i-1);
-            lower = Math.floor(((1-f_fit(i-1) + col2 * (g - 1)) * pow));
-            upper = Math.floor(((1-f_fit(i-1) + col2 * g) * pow));
+            col2 = f_fit(i - 1) / (i - 1);
+            lower = Math.floor(((1 - f_fit(i - 1) + col2 * (g - 1)) * pow));
+            upper = Math.floor(((1 - f_fit(i - 1) + col2 * g) * pow));
         }
         return new Pair<>(lower, upper);
     }
@@ -650,7 +600,7 @@ public class EncoderDecoderWithoutPIICN {
         int fixedLength = encoderTableWithourPII.secParam_L;
 
         List<String> originPswd = new ArrayList<>();
-        CsvWriter writer = CsvUtil.getWriter("/writeData/tableChin19.csv", CharsetUtil.CHARSET_UTF_8);
+        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
@@ -684,8 +634,9 @@ public class EncoderDecoderWithoutPIICN {
                     }
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                    encoderTableWithourPII.encodeFirstMkvTable.putIfAbsent(randomStr, newRandomLine);
+                    encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
                     writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
+                    writer.close();
                     decodedPswd.append(randomStr);
                 } else {
                     decodedPswd.append(firstMkv);

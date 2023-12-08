@@ -21,8 +21,6 @@ public class PathAndAlphaUser {
 //    String pw_renRen;
     String replace_12306;
     String replace_163;
-    String replace_Clix;
-    String replace_BC;
 
 
     public List<String> getPswdList() {

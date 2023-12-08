@@ -3,6 +3,7 @@ package com.example.honeyvault.english.paper23_list_version;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathStatistic;
+import com.example.honeyvault.tool.PathInfo;
 import lombok.ToString;
 import org.springframework.stereotype.Component;
 
@@ -11,17 +12,14 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
 @ToString
-public class EncoderTableListEngl {
+public class EncoderTableListENG {
 
     Map<Integer, Double> ifHdProbMap;
     Map<Integer, Double> ifHiProbMap;
@@ -51,7 +49,7 @@ public class EncoderTableListEngl {
     Map<String, EncodeLine<String>> encodeTiOpProbTable;
 
     Map<String, Double> pswdFreqMap;
-    Map<String, EncodeLine<String>> pswdFreqEncodeTable = new ConcurrentHashMap<>();
+    Map<String, EncodeLine<String>> pswdFreqEncodeTable;
 
     Integer originPswdFreqSize = 0;
     BigInteger kNPlus1 = new BigInteger("0");
@@ -71,7 +69,8 @@ public class EncoderTableListEngl {
         candidateList.addAll(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
                 "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
                 "Φ", "Χ", "Ψ",
-                "Ω", "ω", "ψ"
+                "Ω", "ω", "ψ",
+                "χ", "φ", "υ"
         ));
         List<String> strings = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
                 "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
@@ -86,7 +85,7 @@ public class EncoderTableListEngl {
 
 
     public void buildEncodeTables(double lambdaOp, double lambdaTimes,double listLambda) {
-        List<String> passwds = markovStatistic.parseClix();
+        List<String> passwds = markovStatistic.parseT12306();
         final double totalSize = passwds.size();
         pswdFreqMap = passwds.stream()
                 .collect(Collectors.groupingBy(String::toString, Collectors.counting()))
@@ -95,7 +94,7 @@ public class EncoderTableListEngl {
         double originSize = pswdFreqMap.values().stream().mapToDouble(Double::doubleValue).sum();
         double pow = 29;
         for (int i = 2; i < 17; i++) {
-            pow += Math.pow(121, i);
+            pow += Math.pow(124, i);
         }
         double factor = originSize + listLambda * pow;
         pswdFreqMap.replaceAll((pswd, freq) -> (freq + listLambda) / factor);
@@ -114,7 +113,11 @@ public class EncoderTableListEngl {
         }
         kNPlus1 = maxEncodeLine.getUpperBound();
 
-        List<String> pathTrainSet = pathStatistic.getPathTrainSetEngl();
+        List<PathInfo> pathInfoTrainSet = pathStatistic.getPathTrainSet();
+        List<String> pathTrainSet = new ArrayList<>();
+        pathInfoTrainSet.forEach(info ->{
+            pathTrainSet.add(info.getPath());
+        });
 
         ifHdProbMap = initIfOpProbMap(pathTrainSet, "hd");
         ifHiProbMap = initIfOpProbMap(pathTrainSet, "hi");
@@ -171,16 +174,11 @@ public class EncoderTableListEngl {
         Map<String, Double> tiOpProbMap = new LinkedHashMap<>();
         pathTrainSet.forEach(path -> {
             if (path != null && !path.equals("[]")) {
-                Pattern pattern = Pattern.compile("\\w+\\([^)]*\\)|\\w+\\(\\)");
-                Matcher matcher = pattern.matcher(path);
-
-                // 提取操作元素
-                List<String> operations = new ArrayList<>();
-                while (matcher.find()) {
-                    operations.add(matcher.group());
-                }
-                for (String s : operations) {
-                    if (s.contains("()")) continue;
+                String[] split = path.split(",");
+                for (String s : split) {
+                    if (s.equals("hd()") || s.equals("hi()") || s.equals("ti()") || s.equals("td()")) {
+                        continue;
+                    }
                     if (s.contains("hd")) hdOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("hi")) hiOpProbMap.merge(s.trim(), 1.0, Double::sum);
                     else if (s.contains("td")) tdOpProbMap.merge(s.trim(), 1.0, Double::sum);
@@ -201,7 +199,7 @@ public class EncoderTableListEngl {
 
 
         double originSize = opProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambdaOp * 121;
+        double factor = originSize + lambdaOp * 124;
 
         double factor2 = lambdaOp / factor;
 
@@ -229,7 +227,7 @@ public class EncoderTableListEngl {
     }
 
     Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        double originSize = opTimesMap.values().size();
         double factor = originSize + lambdaTimes * 15;
         for (int i = 1; i < 16; i++) {
             if (opTimesMap.containsKey(i)) {
@@ -327,7 +325,7 @@ public class EncoderTableListEngl {
         BigDecimal pow = BigDecimal.valueOf(2).pow(secParam_L);
         BigDecimal lowerBound = BigDecimal.ZERO;
         BigDecimal upperBound;
-        Map<T, EncodeLine<T>> encodeTable = new ConcurrentHashMap<>();
+        Map<T, EncodeLine<T>> encodeTable = new LinkedHashMap<>();
         for (Map.Entry<T, Double> entry : map.entrySet()) {
             T key = entry.getKey();
             double value = entry.getValue();
