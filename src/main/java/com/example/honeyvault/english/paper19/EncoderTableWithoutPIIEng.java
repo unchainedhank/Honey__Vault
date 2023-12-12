@@ -1,4 +1,4 @@
-package com.example.honeyvault.chinese.paper19;
+package com.example.honeyvault.english.paper19;
 
 import cn.hutool.core.lang.Pair;
 import com.example.honeyvault.data_access.EncodeLine;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderTableWithoutPIICN {
+public class EncoderTableWithoutPIIEng {
     /*
     1. g(dynamic)
     2. length
@@ -203,11 +203,11 @@ public class EncoderTableWithoutPIICN {
 
     public void buildEncodeTablesWithoutPII(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp,
                                             double lambdaTimes) {
-        Set<PathAndAlphaUser> userVaultSet = pathStatistic.parsePswdsWithoutPII();
-        List<PathInfo> pathInfoTrainSet = pathStatistic.getPathTrainSetWithoutPII();
+        Set<PathAndAlphaUser> userVaultSet = pathStatistic.parsePswdsEngWithoutPII();
+        List<PathInfo> pathInfoTrainSet = pathStatistic.getEngPathTrainSetWithoutPII();
         List<String> pathTrainSet = new ArrayList<>();
         pathInfoTrainSet.forEach(info -> pathTrainSet.add(info.getPath()));
-        List<String> passwds = markovStatistic.parseT12306WithoutPII();
+        List<String> passwds = markovStatistic.parseEngMergeWithoutPII();
 
         List<Map<String, Double>> maps = initProbMap(pathTrainSet, lambdaOp);
         hdOpProbMap = maps.get(0);
@@ -268,7 +268,7 @@ public class EncoderTableWithoutPIICN {
         Map<Pair<Integer, Integer>, Double> temp = new HashMap<>();
         double prob = 0.5;
         temp.put(new Pair<>(1, 0), prob);
-        temp.put(new Pair<>(0,1), prob);
+        temp.put(new Pair<>(0, 1), prob);
         Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> tempEncodeLine =
                 probMap2EncodeTable(temp);
         encodeInsertTimesProbTable.put(15, tempEncodeLine);
@@ -336,7 +336,6 @@ public class EncoderTableWithoutPIICN {
 //        bothDeleteTable = modifyTable(bothDeleteTable);
 
 
-
         int mkv_1 = mkv + 1;
 
         passwdLengthProbMap = initPasswdLengthProbMap(userVaultSet);
@@ -389,8 +388,6 @@ public class EncoderTableWithoutPIICN {
             table.put(key, tempTable);
         });
     }
-
-
 
 
     private Map<Integer, Double> initPasswdLengthProbMap(Set<PathAndAlphaUser> userVaultSet) {

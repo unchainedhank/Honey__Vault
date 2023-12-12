@@ -25,23 +25,11 @@ public class ToolTest {
 
 
     public static void main(String[] args) {
-        Map<Integer, Double> opTimesMap = new HashMap<>();
-        double lambdaTimes = 0.001;
-        opTimesMap.put(1, 0.1);
-        opTimesMap.put(2, 0.2);
-        opTimesMap.put(3, 0.3);
+        System.out.println(f_fit(50));
+    }
+    public static double f_fit(int i) {
+        return 1 / (1 + Math.exp(-0.324 * i - 0.933));
     }
 
-    Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().size();
-        double factor = originSize + lambdaTimes * 8;
-        for (int i = 1; i < 9; i++) {
-            if (opTimesMap.containsKey(i)) {
-                opTimesMap.put(i, (opTimesMap.get(i) + lambdaTimes) / factor);
-            } else {
-                opTimesMap.put(i, lambdaTimes / factor);
-            }
-        }
-        return opTimesMap;
-    }
+
 }

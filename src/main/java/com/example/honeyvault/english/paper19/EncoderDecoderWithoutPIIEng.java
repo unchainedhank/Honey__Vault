@@ -1,38 +1,30 @@
-package com.example.honeyvault.chinese.paper19;
+package com.example.honeyvault.english.paper19;
 
 import cn.hutool.core.lang.Pair;
-import cn.hutool.core.text.csv.CsvUtil;
-import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.EncodeLine;
-import com.example.honeyvault.tool.CalPath;
-import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.example.honeyvault.tool.CalPath.countOccurrencesOfOp;
 
 @Component
-public class EncoderDecoderWithoutPIICN {
+public class EncoderDecoderWithoutPIIEng {
 
 //    double alpha;
 
     @Resource
-    private EncoderTableWithoutPIICN encoderTableWithourPII;
+    private EncoderTableWithoutPIIEng encoderTableWithoutPIIEng;
 
     private Map<Pair<Integer, Boolean>, EncodeLine<Pair<Integer, Boolean>>> prDrEncodeLineMap = new HashMap<>();
 
     public void init(int mkv, double lambdaMkv, double lambdaMkv_1, double lambdaOp, double lambdaTimes) {
 //        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
-        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
+        encoderTableWithoutPIIEng.buildEncodeTablesWithoutPII(mkv, lambdaMkv, lambdaMkv_1, lambdaOp, lambdaTimes);
         initPr_DR();
 //        writer.writeLine("encodeHdOpProbTable" + ":" + encoderTableWithourPII.encodeHdOpProbTable);
 //        writer.writeLine("encodeHiOpProbTable" + ":" + encoderTableWithourPII.encodeHiOpProbTable);
@@ -65,9 +57,9 @@ public class EncoderDecoderWithoutPIICN {
 //    }
 
     private void initPr_DR() {
-        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, encoderTableWithourPII.secParam_L));
+        BigDecimal pow = BigDecimal.valueOf(Math.pow(2, encoderTableWithoutPIIEng.secParam_L));
         for (int j = 1; j < 23; j++) {
-            double alpha = 0.23967987443252917;
+            double alpha = 0.2682197549690562;
             double prob = (j * alpha) / (j * alpha + 1 - alpha);
             Pair<Integer, Boolean> i_true = new Pair<>(j, Boolean.TRUE);
             Pair<Integer, Boolean> i_false = new Pair<>(j, Boolean.FALSE);
@@ -146,7 +138,7 @@ public class EncoderDecoderWithoutPIICN {
 //    }
 
     public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-1.293 * i + 0.575));
+        return 1 / (1 + Math.exp(-0.324 * i - 0.933));
     }
 
 //    private double calAlpha() {
@@ -177,7 +169,7 @@ public class EncoderDecoderWithoutPIICN {
 //    }
 
     private Pair<Double, Double> gEncoder(int g, int i) {
-        double L = encoderTableWithourPII.secParam_L;
+        double L = encoderTableWithoutPIIEng.secParam_L;
         double pow = Math.pow(2, L);
         double col2;
         double lower = 0, upper;
@@ -424,13 +416,13 @@ public class EncoderDecoderWithoutPIICN {
     //  cal method
     private double getMarkovProb(String passwd, int mkv, double lambdaMkv) {
         // g=0
-        Double lengthProb = encoderTableWithourPII.passwdLengthProbMap.get(passwd.length());
+        Double lengthProb = encoderTableWithoutPIIEng.passwdLengthProbMap.get(passwd.length());
         double originSize =
-                encoderTableWithourPII.firstMkvProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
+                encoderTableWithoutPIIEng.firstMkvProbMap.values().stream().mapToDouble(Double::doubleValue).sum();
         double pow = Math.pow(95, mkv);
         double factor = originSize + lambdaMkv * pow;
         double factor2 = lambdaMkv / factor;
-        Double firstMkvProb = encoderTableWithourPII.firstMkvProbMap.getOrDefault(passwd.substring(0, mkv), factor2);
+        Double firstMkvProb = encoderTableWithoutPIIEng.firstMkvProbMap.getOrDefault(passwd.substring(0, mkv), factor2);
 
         double finalProb = lengthProb * firstMkvProb;
         int mkv_1 = mkv + 1;
@@ -438,10 +430,10 @@ public class EncoderDecoderWithoutPIICN {
             String window = passwd.substring(i, i + mkv_1);
             String prefix = window.substring(0, mkv);
             String suffix = window.substring(window.length() - 1);
-            HashMap<String, Double> suffixProb = encoderTableWithourPII.everyMkv_1ProbMap.get(prefix);
+            HashMap<String, Double> suffixProb = encoderTableWithoutPIIEng.everyMkv_1ProbMap.get(prefix);
             Double mkv_1Prob;
             if (suffixProb == null) {
-                mkv_1Prob = encoderTableWithourPII.absentMkv_1ProbMap.getOrDefault(suffix, 0.01052631579);
+                mkv_1Prob = encoderTableWithoutPIIEng.absentMkv_1ProbMap.getOrDefault(suffix, 0.01052631579);
             } else {
                 mkv_1Prob = suffixProb.getOrDefault(suffix, 0.01052631579);
             }
@@ -455,10 +447,10 @@ public class EncoderDecoderWithoutPIICN {
             double prob = 1;
             for (String op : path) {
                 op = op.trim();
-                if (op.contains("hd")) prob *= encoderTableWithourPII.hdOpProbMap.get(op);
-                else if (op.contains("hi")) prob *= encoderTableWithourPII.hiOpProbMap.get(op);
-                else if (op.contains("td")) prob *= encoderTableWithourPII.tdOpProbMap.get(op);
-                else if (op.contains("ti")) prob *= encoderTableWithourPII.tiOpProbMap.get(op);
+                if (op.contains("hd")) prob *= encoderTableWithoutPIIEng.hdOpProbMap.get(op);
+                else if (op.contains("hi")) prob *= encoderTableWithoutPIIEng.hiOpProbMap.get(op);
+                else if (op.contains("td")) prob *= encoderTableWithoutPIIEng.tdOpProbMap.get(op);
+                else if (op.contains("ti")) prob *= encoderTableWithoutPIIEng.tiOpProbMap.get(op);
             }
             return prob;
         } else return 1;
@@ -600,7 +592,8 @@ public class EncoderDecoderWithoutPIICN {
     public List<String> decode(List<String> encodedList, int mkv, double lambdaMkv) {
 //        encoderTableWithourPII.buildEncodeTablesWithoutPII(mkv);
         encodedList = initVault(encodedList);
-        int fixedLength = encoderTableWithourPII.secParam_L;
+        int fixedLength = encoderTableWithoutPIIEng.secParam_L;
+
 
         List<String> originPswd = new ArrayList<>();
 //        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table19.csv", CharsetUtil.CHARSET_UTF_8);
@@ -611,16 +604,16 @@ public class EncoderDecoderWithoutPIICN {
             List<String> encodeElementList = splitString(encodedString, fixedLength);
             if (index == 1) {
                 BigInteger encodedPwLength = new BigInteger(encodeElementList.get(0), 2);
-                Integer pwLength = findOriginValue(encodedPwLength, encoderTableWithourPII.encodePasswdLengthTable);
+                Integer pwLength = findOriginValue(encodedPwLength, encoderTableWithoutPIIEng.encodePasswdLengthTable);
                 BigInteger encodedfirstMkv = new BigInteger(encodeElementList.get(1), 2);
-                String firstMkv = findOriginValue(encodedfirstMkv, encoderTableWithourPII.encodeFirstMkvTable);
+                String firstMkv = findOriginValue(encodedfirstMkv, encoderTableWithoutPIIEng.encodeFirstMkvTable);
                 if (firstMkv == null) {
-                    BigInteger kNPlus1 = encoderTableWithourPII.kNPlus1;
-                    BigDecimal pow = BigDecimal.valueOf(2).pow(encoderTableWithourPII.secParam_L);
+                    BigInteger kNPlus1 = encoderTableWithoutPIIEng.kNPlus1;
+                    BigDecimal pow = BigDecimal.valueOf(2).pow(encoderTableWithoutPIIEng.secParam_L);
                     BigDecimal p1;
                     BigDecimal topP1 = new BigDecimal(lambdaMkv);
                     BigDecimal bottomP1 =
-                            new BigDecimal(encoderTableWithourPII.originFirstMkvSize).add(BigDecimal.valueOf(95).pow(5).multiply(BigDecimal.valueOf(lambdaMkv)));
+                            new BigDecimal(encoderTableWithoutPIIEng.originFirstMkvSize).add(BigDecimal.valueOf(95).pow(5).multiply(BigDecimal.valueOf(lambdaMkv)));
                     p1 = topP1.divide(bottomP1, 20, RoundingMode.DOWN);
 
                     BigDecimal bottom = p1.multiply(pow);
@@ -632,12 +625,12 @@ public class EncoderDecoderWithoutPIICN {
                             new BigDecimal(kNPlus1).add(top.divide(bottom, 40, RoundingMode.FLOOR).add(BigDecimal.valueOf(1))
                                     .multiply(bottom)).toBigInteger();
                     String randomStr = genRandomStr();
-                    while (encoderTableWithourPII.encodeFirstMkvTable.containsKey(randomStr)) {
+                    while (encoderTableWithoutPIIEng.encodeFirstMkvTable.containsKey(randomStr)) {
                         randomStr = genRandomStr();
                     }
                     EncodeLine<String> newRandomLine =
                             EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                    encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
+                    encoderTableWithoutPIIEng.encodeFirstMkvTable.put(randomStr, newRandomLine);
 //                    writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
 //                    writer.close();
                     decodedPswd.append(randomStr);
@@ -657,9 +650,9 @@ public class EncoderDecoderWithoutPIICN {
                         encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(i), 2);
                     }
                     Map<String, EncodeLine<String>> encodeSuffixTable =
-                            encoderTableWithourPII.encodeEveryMkv_1Table.get(prefix);
+                            encoderTableWithoutPIIEng.encodeEveryMkv_1Table.get(prefix);
                     if (encodeSuffixTable == null) {
-                        suffix = findOriginValue(encodedSuffix, encoderTableWithourPII.absentMkv_1Table);
+                        suffix = findOriginValue(encodedSuffix, encoderTableWithoutPIIEng.absentMkv_1Table);
                     } else {
                         suffix = findOriginValue(encodedSuffix, encodeSuffixTable);
                     }
@@ -682,12 +675,12 @@ public class EncoderDecoderWithoutPIICN {
                 }
                 if (g == 0) {
                     BigInteger encodedPwLength = new BigInteger(encodeElementList.get(1), 2);
-                    Integer pwLength = findOriginValue(encodedPwLength, encoderTableWithourPII.encodePasswdLengthTable);
+                    Integer pwLength = findOriginValue(encodedPwLength, encoderTableWithoutPIIEng.encodePasswdLengthTable);
                     BigInteger encodedfirstMkv = new BigInteger(encodeElementList.get(2), 2);
-                    String firstMkv = findOriginValue(encodedfirstMkv, encoderTableWithourPII.encodeFirstMkvTable);
+                    String firstMkv = findOriginValue(encodedfirstMkv, encoderTableWithoutPIIEng.encodeFirstMkvTable);
                     if (firstMkv == null) {
-                        BigInteger kNPlus1 = encoderTableWithourPII.kNPlus1;
-                        BigDecimal pow = BigDecimal.valueOf(2).pow(encoderTableWithourPII.secParam_L);
+                        BigInteger kNPlus1 = encoderTableWithoutPIIEng.kNPlus1;
+                        BigDecimal pow = BigDecimal.valueOf(2).pow(encoderTableWithoutPIIEng.secParam_L);
                         BigDecimal p1 = getP1(lambdaMkv);
                         BigDecimal bottom = p1.multiply(pow);
                         BigDecimal top = new BigDecimal(encodedfirstMkv).subtract(new BigDecimal(kNPlus1));
@@ -698,12 +691,12 @@ public class EncoderDecoderWithoutPIICN {
                                 new BigDecimal(kNPlus1).add(top.divide(bottom, 0, RoundingMode.FLOOR).add(BigDecimal.valueOf(1))
                                         .multiply(bottom)).toBigInteger();
                         String randomStr = genRandomStr();
-                        while (encoderTableWithourPII.encodeFirstMkvTable.containsKey(randomStr)) {
+                        while (encoderTableWithoutPIIEng.encodeFirstMkvTable.containsKey(randomStr)) {
                             randomStr = genRandomStr();
                         }
                         EncodeLine<String> newRandomLine =
                                 EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
-                        encoderTableWithourPII.encodeFirstMkvTable.put(randomStr, newRandomLine);
+                        encoderTableWithoutPIIEng.encodeFirstMkvTable.put(randomStr, newRandomLine);
 //                        writer.writeLine(String.valueOf(encoderTableWithourPII.encodeFirstMkvTable));
                         decodedPswd.append(randomStr);
                     } else {
@@ -723,9 +716,9 @@ public class EncoderDecoderWithoutPIICN {
                             encodedSuffix = new BigInteger(encodedEveryMkv_1List.get(i), 2);
                         }
                         Map<String, EncodeLine<String>> encodeSuffixTable =
-                                encoderTableWithourPII.encodeEveryMkv_1Table.get(prefix);
+                                encoderTableWithoutPIIEng.encodeEveryMkv_1Table.get(prefix);
                         if (encodeSuffixTable == null) {
-                            suffix = findOriginValue(encodedSuffix, encoderTableWithourPII.absentMkv_1Table);
+                            suffix = findOriginValue(encodedSuffix, encoderTableWithoutPIIEng.absentMkv_1Table);
                         } else {
                             suffix = findOriginValue(encodedSuffix, encodeSuffixTable);
                         }
@@ -748,12 +741,12 @@ public class EncoderDecoderWithoutPIICN {
                         System.out.println("baseString" + baseString + ":" + k);
 //                  2. pr_M
                         BigInteger encodedPr_M = new BigInteger(encodeElementList.get(2), 2);
-                        String prM = findOriginValue(encodedPr_M, encoderTableWithourPII.prMTable);
+                        String prM = findOriginValue(encodedPr_M, encoderTableWithoutPIIEng.prMTable);
                         switch (prM) {
                             case "pr_M_head": {
                                 BigInteger encodedHeadOpType = new BigInteger(encodeElementList.get(3), 2);
                                 String headOpType = findOriginValue(encodedHeadOpType,
-                                        encoderTableWithourPII.prHOpTable);
+                                        encoderTableWithoutPIIEng.prHOpTable);
                                 if (k == 5) {
                                     headOpType = "pr_H_insert";
                                 }
@@ -764,11 +757,11 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_H_insert": {
                                         BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer hiTimes = findOriginValue(encodedHiTimes,
-                                                encoderTableWithourPII.hiOnlyTable.get(k)).getKey();
+                                                encoderTableWithoutPIIEng.hiOnlyTable.get(k)).getKey();
                                         for (int i = 1; i <= hiTimes; i++) {
                                             BigInteger encodedHiOp = new BigInteger(encodeElementList.get(4 + i), 2);
                                             String hiOp = findOriginValue(encodedHiOp,
-                                                    encoderTableWithourPII.encodeHiOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                             String parameter = hiOp.substring(3, 4);
                                             baseString = hi(baseString, parameter);
                                         }
@@ -778,11 +771,11 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_H_delete": {
                                         BigInteger encodedHdTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer hdTimes = findOriginValue(encodedHdTimes,
-                                                encoderTableWithourPII.hdOnlyTable.get(k)).getKey();
+                                                encoderTableWithoutPIIEng.hdOnlyTable.get(k)).getKey();
                                         for (int i = 1; i <= hdTimes; i++) {
                                             BigInteger encodedHdOp = new BigInteger(encodeElementList.get(4 + i), 2);
                                             String hdOp = findOriginValue(encodedHdOp,
-                                                    encoderTableWithourPII.encodeHdOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                             String parameter = hdOp.substring(3, 4);
                                             baseString = hd(baseString, parameter);
                                         }
@@ -791,14 +784,14 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_H_deleteAndInsert": {
                                         BigInteger encodedHdTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer hdTimes = findOriginValue(encodedHdTimes,
-                                                encoderTableWithourPII.hdOnlyTable.get(k)).getKey();
+                                                encoderTableWithoutPIIEng.hdOnlyTable.get(k)).getKey();
                                         BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(5), 2);
                                         Integer hiTimes = findOriginValue(encodedHiTimes,
-                                                encoderTableWithourPII.hiOnlyTable.get(k - hdTimes)).getKey();
+                                                encoderTableWithoutPIIEng.hiOnlyTable.get(k - hdTimes)).getKey();
                                         for (int i = 1; i <= hdTimes; i++) {
                                             BigInteger encodedHdOp = new BigInteger(encodeElementList.get(5 + i), 2);
                                             String hdOp = findOriginValue(encodedHdOp,
-                                                    encoderTableWithourPII.encodeHdOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                             String parameter = hdOp.substring(3, 4);
                                             baseString = hd(baseString, parameter);
                                         }
@@ -806,7 +799,7 @@ public class EncoderDecoderWithoutPIICN {
                                             BigInteger encodedHiOp =
                                                     new BigInteger(encodeElementList.get(5 + i + hdTimes), 2);
                                             String hiOp = findOriginValue(encodedHiOp,
-                                                    encoderTableWithourPII.encodeHiOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                             String parameter = hiOp.substring(3, 4);
                                             baseString = hi(baseString, parameter);
                                         }
@@ -818,7 +811,7 @@ public class EncoderDecoderWithoutPIICN {
                             case "pr_M_tail": {
                                 BigInteger encodedTailOpType = new BigInteger(encodeElementList.get(3), 2);
                                 String tailOpType = findOriginValue(encodedTailOpType,
-                                        encoderTableWithourPII.prTOpTable);
+                                        encoderTableWithoutPIIEng.prTOpTable);
                                 if (k == 5) {
                                     tailOpType = "pr_T_insert";
                                 }
@@ -829,11 +822,11 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_T_insert": {
                                         BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer tiTimes = findOriginValue(encodedTiTimes,
-                                                encoderTableWithourPII.tiOnlyTable.get(k)).getValue();
+                                                encoderTableWithoutPIIEng.tiOnlyTable.get(k)).getValue();
                                         for (int i = 1; i <= tiTimes; i++) {
                                             BigInteger encodedTiOp = new BigInteger(encodeElementList.get(4 + i), 2);
                                             String tiOp = findOriginValue(encodedTiOp,
-                                                    encoderTableWithourPII.encodeTiOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                             String parameter = tiOp.substring(3, 4);
                                             baseString = ti(baseString, parameter);
                                         }
@@ -843,11 +836,11 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_T_delete": {
                                         BigInteger encodedTdTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer tdTimes = findOriginValue(encodedTdTimes,
-                                                encoderTableWithourPII.tdOnlyTable.get(k)).getValue();
+                                                encoderTableWithoutPIIEng.tdOnlyTable.get(k)).getValue();
                                         for (int i = 1; i <= tdTimes; i++) {
                                             BigInteger encodedTdOp = new BigInteger(encodeElementList.get(4 + i), 2);
                                             String tdOp = findOriginValue(encodedTdOp,
-                                                    encoderTableWithourPII.encodeTdOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                             String parameter = tdOp.substring(3, 4);
                                             baseString = td(baseString, parameter);
                                         }
@@ -856,14 +849,14 @@ public class EncoderDecoderWithoutPIICN {
                                     case "pr_T_deleteAndInsert": {
                                         BigInteger encodedTdTimes = new BigInteger(encodeElementList.get(4), 2);
                                         Integer tdTimes = findOriginValue(encodedTdTimes,
-                                                encoderTableWithourPII.tdOnlyTable.get(k)).getValue();
+                                                encoderTableWithoutPIIEng.tdOnlyTable.get(k)).getValue();
                                         BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(5), 2);
                                         Integer tiTimes = findOriginValue(encodedTiTimes,
-                                                encoderTableWithourPII.tiOnlyTable.get(k - tdTimes)).getValue();
+                                                encoderTableWithoutPIIEng.tiOnlyTable.get(k - tdTimes)).getValue();
                                         for (int i = 1; i <= tdTimes; i++) {
                                             BigInteger encodedTdOp = new BigInteger(encodeElementList.get(5 + i), 2);
                                             String tdOp = findOriginValue(encodedTdOp,
-                                                    encoderTableWithourPII.encodeTdOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                             String parameter = tdOp.substring(3, 4);
                                             baseString = td(baseString, parameter);
                                         }
@@ -871,7 +864,7 @@ public class EncoderDecoderWithoutPIICN {
                                             BigInteger encodedTiOp =
                                                     new BigInteger(encodeElementList.get(5 + i + tdTimes), 2);
                                             String tiOp = findOriginValue(encodedTiOp,
-                                                    encoderTableWithourPII.encodeTiOpProbTable);
+                                                    encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                             String parameter = tiOp.substring(3, 4);
                                             baseString = ti(baseString, parameter);
                                         }
@@ -884,10 +877,10 @@ public class EncoderDecoderWithoutPIICN {
                             case "pr_M_headAndTail": {
                                 BigInteger encodedHeadOpType = new BigInteger(encodeElementList.get(3), 2);
                                 String headOpType = findOriginValue(encodedHeadOpType,
-                                        encoderTableWithourPII.prHOpTable);
+                                        encoderTableWithoutPIIEng.prHOpTable);
                                 BigInteger encodedTailOpType = new BigInteger(encodeElementList.get(4), 2);
                                 String tailOpType = findOriginValue(encodedTailOpType,
-                                        encoderTableWithourPII.prTOpTable);
+                                        encoderTableWithoutPIIEng.prTOpTable);
                                 if (k == 6) {
                                     if (headOpType.equals("pr_H_delete")) {
                                         tailOpType = "pr_T_insert";
@@ -928,13 +921,13 @@ public class EncoderDecoderWithoutPIICN {
                                 if (hiOnly && tiOnly) {
                                     BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(5), 2);
                                     Pair<Integer, Integer> pair = findOriginValue(encodedHiTimes,
-                                            encoderTableWithourPII.bothInsertTable.get(k));
+                                            encoderTableWithoutPIIEng.bothInsertTable.get(k));
                                     int hiTimes = pair.getKey();
                                     int tiTimes = pair.getValue();
                                     for (int i = 1; i <= hiTimes; i++) {
                                         BigInteger encodedHiOp = new BigInteger(encodeElementList.get(5 + i), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -942,7 +935,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTiOp =
                                                 new BigInteger(encodeElementList.get(5 + i + hiTimes), 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -951,14 +944,14 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedTdTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(6), 2);
                                     Integer tdTimes = findOriginValue(encodedTdTimes,
-                                            encoderTableWithourPII.tdOnlyTable.get(k)).getValue();
+                                            encoderTableWithoutPIIEng.tdOnlyTable.get(k)).getValue();
                                     Integer hiTimes = findOriginValue(encodedHiTimes,
-                                            encoderTableWithourPII.hiOnlyTable.get(k - tdTimes)).getKey();
+                                            encoderTableWithoutPIIEng.hiOnlyTable.get(k - tdTimes)).getKey();
 
                                     for (int i = 1; i <= tdTimes; i++) {
                                         BigInteger encodedTdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -966,7 +959,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedHiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + tdTimes), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -976,16 +969,16 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedTdTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedInsertTimes = new BigInteger(encodeElementList.get(6), 2);
                                     Integer tdTimes = findOriginValue(encodedTdTimes,
-                                            encoderTableWithourPII.tdOnlyTable.get(k)).getValue();
+                                            encoderTableWithoutPIIEng.tdOnlyTable.get(k)).getValue();
                                     Integer hiTimes = findOriginValue(encodedInsertTimes,
-                                            encoderTableWithourPII.bothInsertTable.get(k - tdTimes)).getKey();
+                                            encoderTableWithoutPIIEng.bothInsertTable.get(k - tdTimes)).getKey();
                                     Integer tiTimes = findOriginValue(encodedInsertTimes,
-                                            encoderTableWithourPII.bothInsertTable.get(k - tdTimes)).getValue();
+                                            encoderTableWithoutPIIEng.bothInsertTable.get(k - tdTimes)).getValue();
                                     for (int i = 1; i <= tdTimes; i++) {
                                         BigInteger encodedTdOp =
                                                 new BigInteger(encodeElementList.get(6 + i), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -993,7 +986,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedHiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + tdTimes), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -1002,7 +995,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hiTimes + tdTimes), 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -1011,13 +1004,13 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedHdTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(6), 2);
                                     Integer hdTimes = findOriginValue(encodedHdTimes,
-                                            encoderTableWithourPII.hdOnlyTable.get(k)).getKey();
+                                            encoderTableWithoutPIIEng.hdOnlyTable.get(k)).getKey();
                                     Integer tiTimes = findOriginValue(encodedTiTimes,
-                                            encoderTableWithourPII.hiOnlyTable.get(k - hdTimes)).getValue();
+                                            encoderTableWithoutPIIEng.hiOnlyTable.get(k - hdTimes)).getValue();
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hddOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hddOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1025,7 +1018,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes), 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -1033,14 +1026,14 @@ public class EncoderDecoderWithoutPIICN {
                                 if (hdOnly && tdOnly) {
                                     BigInteger encodedDeleteTimes = new BigInteger(encodeElementList.get(5), 2);
                                     Pair<Integer, Integer> pair = findOriginValue(encodedDeleteTimes,
-                                            encoderTableWithourPII.bothDeleteTable.get(k));
+                                            encoderTableWithoutPIIEng.bothDeleteTable.get(k));
                                     int hdTimes = pair.getKey();
                                     Integer tdTimes = pair.getValue();
 
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(5 + i), 2);
                                         String hddOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hddOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1048,7 +1041,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTdOp =
                                                 new BigInteger(encodeElementList.get(5 + i + hdTimes), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -1057,15 +1050,15 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedDeleteTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedTiTimes = new BigInteger(encodeElementList.get(6), 2);
                                     Pair<Integer, Integer> pair = findOriginValue(encodedDeleteTimes,
-                                            encoderTableWithourPII.bothDeleteTable.get(k));
+                                            encoderTableWithoutPIIEng.bothDeleteTable.get(k));
                                     int hdTimes = pair.getKey();
                                     int tdTimes = pair.getValue();
                                     Integer tiTimes = findOriginValue(encodedTiTimes,
-                                            encoderTableWithourPII.tiOnlyTable.get(k - hdTimes - tdTimes)).getValue();
+                                            encoderTableWithoutPIIEng.tiOnlyTable.get(k - hdTimes - tdTimes)).getValue();
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hddOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hddOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1073,7 +1066,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTdOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -1081,7 +1074,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes + tdTimes), 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -1091,15 +1084,15 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedInsertTimes = new BigInteger(encodeElementList.get(6), 2);
 
                                     Integer hdTimes = findOriginValue(encodedHdTimes,
-                                            encoderTableWithourPII.hdOnlyTable.get(k)).getKey();
+                                            encoderTableWithoutPIIEng.hdOnlyTable.get(k)).getKey();
                                     Pair<Integer, Integer> pair = findOriginValue(encodedInsertTimes,
-                                            encoderTableWithourPII.bothInsertTable.get(k - hdTimes));
+                                            encoderTableWithoutPIIEng.bothInsertTable.get(k - hdTimes));
                                     Integer hiTimes = pair.getKey();
                                     Integer tiTimes = pair.getValue();
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hdOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hdOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1107,7 +1100,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedHiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -1115,7 +1108,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes + hiTimes), 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -1125,16 +1118,16 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedHiTimes = new BigInteger(encodeElementList.get(6), 2);
 
                                     Pair<Integer, Integer> p = findOriginValue(encodedDeleteTimes,
-                                            encoderTableWithourPII.bothDeleteTable.get(k));
+                                            encoderTableWithoutPIIEng.bothDeleteTable.get(k));
                                     Integer hdTimes = p.getKey();
                                     int tdTimes = p.getValue();
                                     Integer hiTimes = findOriginValue(encodedHiTimes,
-                                            encoderTableWithourPII.hiOnlyTable.get(k - hdTimes - tdTimes)).getKey();
+                                            encoderTableWithoutPIIEng.hiOnlyTable.get(k - hdTimes - tdTimes)).getKey();
 
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hdOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hdOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1142,7 +1135,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTdOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -1150,7 +1143,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedHiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes + tdTimes), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -1160,18 +1153,18 @@ public class EncoderDecoderWithoutPIICN {
                                     BigInteger encodedDeleteTimes = new BigInteger(encodeElementList.get(5), 2);
                                     BigInteger encodedInsertTimes = new BigInteger(encodeElementList.get(6), 2);
                                     Pair<Integer, Integer> p1 = findOriginValue(encodedDeleteTimes,
-                                            encoderTableWithourPII.bothDeleteTable.get(k));
+                                            encoderTableWithoutPIIEng.bothDeleteTable.get(k));
                                     Integer hdTimes = p1.getKey();
                                     int tdTimes = p1.getValue();
 
                                     Pair<Integer, Integer> p2 = findOriginValue(encodedInsertTimes,
-                                            encoderTableWithourPII.bothInsertTable.get(k - hdTimes - tdTimes));
+                                            encoderTableWithoutPIIEng.bothInsertTable.get(k - hdTimes - tdTimes));
                                     Integer hiTimes = p2.getKey();
                                     Integer tiTimes = p2.getValue();
                                     for (int i = 1; i <= hdTimes; i++) {
                                         BigInteger encodedHdOp = new BigInteger(encodeElementList.get(6 + i), 2);
                                         String hdOp = findOriginValue(encodedHdOp,
-                                                encoderTableWithourPII.encodeHdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHdOpProbTable);
                                         String parameter = hdOp.substring(3, 4);
                                         baseString = hd(baseString, parameter);
                                     }
@@ -1179,7 +1172,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedTdOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes), 2);
                                         String tdOp = findOriginValue(encodedTdOp,
-                                                encoderTableWithourPII.encodeTdOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTdOpProbTable);
                                         String parameter = tdOp.substring(3, 4);
                                         baseString = td(baseString, parameter);
                                     }
@@ -1187,7 +1180,7 @@ public class EncoderDecoderWithoutPIICN {
                                         BigInteger encodedHiOp =
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes + tdTimes), 2);
                                         String hiOp = findOriginValue(encodedHiOp,
-                                                encoderTableWithourPII.encodeHiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeHiOpProbTable);
                                         String parameter = hiOp.substring(3, 4);
                                         baseString = hi(baseString, parameter);
                                     }
@@ -1197,7 +1190,7 @@ public class EncoderDecoderWithoutPIICN {
                                                 new BigInteger(encodeElementList.get(6 + i + hdTimes + hiTimes + tdTimes)
                                                         , 2);
                                         String tiOp = findOriginValue(encodedTiOp,
-                                                encoderTableWithourPII.encodeTiOpProbTable);
+                                                encoderTableWithoutPIIEng.encodeTiOpProbTable);
                                         String parameter = tiOp.substring(3, 4);
                                         baseString = ti(baseString, parameter);
                                     }
@@ -1205,6 +1198,7 @@ public class EncoderDecoderWithoutPIICN {
                                 break;
                             }
                         }
+
 
 //              加入到已解码列表中
                         decodedPswd.append(baseString);
@@ -1280,7 +1274,7 @@ public class EncoderDecoderWithoutPIICN {
         BigDecimal topP1 = new BigDecimal(lambda);
         BigDecimal listNumber = BigDecimal.valueOf(95).pow(5);
         BigDecimal bottomP1 =
-                new BigDecimal(encoderTableWithourPII.originFirstMkvSize).add(listNumber.multiply(BigDecimal.valueOf(lambda)));
+                new BigDecimal(encoderTableWithoutPIIEng.originFirstMkvSize).add(listNumber.multiply(BigDecimal.valueOf(lambda)));
         p1 = topP1.divide(bottomP1, 40, RoundingMode.FLOOR);
         return p1;
     }

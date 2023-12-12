@@ -1,4 +1,4 @@
-package com.example.honeyvault.tool;
+package com.example.honeyvault.data_access.path;
 
 import lombok.*;
 
@@ -10,5 +10,5 @@ import lombok.*;
 public class PathInfo {
     private String path;
     private int length;
-
+    private int lengthMinusDelete;
 }

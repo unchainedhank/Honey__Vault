@@ -29,23 +29,23 @@ public class EncoderDecoderListCN {
 
 
     public void init(double lambdaOp, double lambdaTimes, double listLambda) {
-        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23L.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table23L.csv", CharsetUtil.CHARSET_UTF_8);
         encoderTableListCN.buildEncodeTables(lambdaOp, lambdaTimes, listLambda);
-        writer.writeLine("encodeHdOpProbTable" + ":" + encoderTableListCN.encodeHdOpProbTable);
-        writer.writeLine("encodeHiOpProbTable" + ":" + encoderTableListCN.encodeHiOpProbTable);
-        writer.writeLine("encodeTdOpProbTable" + ":" + encoderTableListCN.encodeTdOpProbTable);
-        writer.writeLine("encodeTiOpProbTable" + ":" + encoderTableListCN.encodeTiOpProbTable);
-        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
-        writer.writeLine("encodeIfTiProbTable" + ":" + encoderTableListCN.encodeIfTiProbTable);
-        writer.writeLine("encodeIfTdProbTable" + ":" + encoderTableListCN.encodeIfTdProbTable);
-        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
-        writer.writeLine("encodeIfHiProbTable" + ":" + encoderTableListCN.encodeIfHiProbTable);
-        writer.writeLine("encodeHdTimesProbTable" + ":" + encoderTableListCN.encodeHdTimesProbTable);
-        writer.writeLine("encodeHiTimesProbTable" + ":" + encoderTableListCN.encodeHiTimesProbTable);
-        writer.writeLine("encodeTiTimesProbTable" + ":" + encoderTableListCN.encodeTiTimesProbTable);
-        writer.writeLine("encodeTdTimesProbTable" + ":" + encoderTableListCN.encodeTdTimesProbTable);
-        writer.writeLine("pswdFreqEncodeTable" + ":" + encoderTableListCN.pswdFreqEncodeTable);
-        writer.close();
+//        writer.writeLine("encodeHdOpProbTable" + ":" + encoderTableListCN.encodeHdOpProbTable);
+//        writer.writeLine("encodeHiOpProbTable" + ":" + encoderTableListCN.encodeHiOpProbTable);
+//        writer.writeLine("encodeTdOpProbTable" + ":" + encoderTableListCN.encodeTdOpProbTable);
+//        writer.writeLine("encodeTiOpProbTable" + ":" + encoderTableListCN.encodeTiOpProbTable);
+//        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
+//        writer.writeLine("encodeIfTiProbTable" + ":" + encoderTableListCN.encodeIfTiProbTable);
+//        writer.writeLine("encodeIfTdProbTable" + ":" + encoderTableListCN.encodeIfTdProbTable);
+//        writer.writeLine("encodeIfHdProbTable" + ":" + encoderTableListCN.encodeIfHdProbTable);
+//        writer.writeLine("encodeIfHiProbTable" + ":" + encoderTableListCN.encodeIfHiProbTable);
+//        writer.writeLine("encodeHdTimesProbTable" + ":" + encoderTableListCN.encodeHdTimesProbTable);
+//        writer.writeLine("encodeHiTimesProbTable" + ":" + encoderTableListCN.encodeHiTimesProbTable);
+//        writer.writeLine("encodeTiTimesProbTable" + ":" + encoderTableListCN.encodeTiTimesProbTable);
+//        writer.writeLine("encodeTdTimesProbTable" + ":" + encoderTableListCN.encodeTdTimesProbTable);
+//        writer.writeLine("pswdFreqEncodeTable" + ":" + encoderTableListCN.pswdFreqEncodeTable);
+//        writer.close();
     }
 
     public List<Pair<String, String>> encode(List<String> initVault, int fixedLength, double listLambda) {
@@ -76,12 +76,15 @@ public class EncoderDecoderListCN {
 
                 pathProbMap.put(new Pair<>(i, i), pr2);
 
-                double pr1 = 0;
                 double pr1j;
 
-                List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
-                double pr_ssm = calPr_ssm(paths);
-                pr1j = A * pr_ssm;
+                if (((double) CalPath.LongestComSubstr(pwi1, pwi).length() / Math.max(pwi1.length(), pwi.length()) < 0.125)) {
+                    pr1j = 0;
+                } else {
+                    List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
+                    double pr_ssm = calPr_ssm(paths, pwi);
+                    pr1j = A * pr_ssm;
+                }
                 pathProbMap.put(new Pair<>(i, j), pr1j);
             }
         }
@@ -111,7 +114,7 @@ public class EncoderDecoderListCN {
     }
 
     public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-1.493 * i + 2.486));
+        return 1 / (1 + Math.exp(-1.293 * i + 0.575));
     }
 
 //    private double calAlpha() {
@@ -147,11 +150,11 @@ public class EncoderDecoderListCN {
         double col2;
         double lower = 0, upper;
         if (g == 0) {
-            upper = Math.floor(pow *(1 - f_fit(i-1)));
+            upper = Math.floor(pow * (1 - f_fit(i - 1)));
         } else {
-            col2 = f_fit(i-1) / (i-1);
-            lower = Math.floor(((1-f_fit(i-1) + col2 * (g - 1)) * pow));
-            upper = Math.floor(((1-f_fit(i-1) + col2 * g) * pow));
+            col2 = f_fit(i - 1) / (i - 1);
+            lower = Math.floor(((1 - f_fit(i - 1) + col2 * (g - 1)) * pow));
+            upper = Math.floor(((1 - f_fit(i - 1) + col2 * g) * pow));
         }
         return new Pair<>(lower, upper);
     }
@@ -197,72 +200,57 @@ public class EncoderDecoderListCN {
             Map<List<String>, Double> pathProbMap = new ConcurrentHashMap<>();
 //          路径->概率
             paths.forEach(path -> {
-                double pathProb = getEncodePathProb(path);
+                double pathProb = getPathProb(path, basePasswd);
                 pathProbMap.put(path, pathProb);
             });
 //          根据概率选择路径
             List<String> selectedOpList = selectPathByProbability(pathProbMap);
             String selectedPath = selectedOpList.toString();
 //          编码路径
-            selectedPath = selectedPath.trim().replace("[", "");
-            selectedPath = selectedPath.trim().replace("]", "");
-//          1.编码ifOp
-            EncodeLine<Integer> ifHdLine = encoderTableListCN.encodeIfHdProbTable.get(selectedPath.contains("hd") ? 1
-                    : 0);
-            encodeValue = getRandomValue(ifHdLine.getLowerBound(),
-                    ifHdLine.getUpperBound());
-            encodeString.append(toBinaryString(encodeValue, fixedLength));
-
-            EncodeLine<Integer> ifHiLine = encoderTableListCN.encodeIfHiProbTable.get(selectedPath.contains("hi") ? 1
-                    : 0);
-            encodeValue = getRandomValue(ifHiLine.getLowerBound(),
-                    ifHiLine.getUpperBound());
-            encodeString.append(toBinaryString(encodeValue, fixedLength));
-
-            EncodeLine<Integer> ifTdLine = encoderTableListCN.encodeIfTdProbTable.get(selectedPath.contains("td") ? 1
-                    : 0);
-            encodeValue = getRandomValue(ifTdLine.getLowerBound(),
-                    ifTdLine.getUpperBound());
-            encodeString.append(toBinaryString(encodeValue, fixedLength));
-
-            EncodeLine<Integer> ifTiLine = encoderTableListCN.encodeIfTiProbTable.get(selectedPath.contains("ti") ? 1
-                    : 0);
-            encodeValue = getRandomValue(ifTiLine.getLowerBound(),
-                    ifTiLine.getUpperBound());
-            encodeString.append(toBinaryString(encodeValue, fixedLength));
-//          2.编码opTimes
             int hdTimes = countOccurrencesOfOp(selectedPath, "hd");
-            if (hdTimes != 0) {
-                EncodeLine<Integer> hdTimesEncodeLine = encoderTableListCN.encodeHdTimesProbTable.get(hdTimes);
-                encodeValue = getRandomValue(hdTimesEncodeLine.getLowerBound(),
-                        hdTimesEncodeLine.getUpperBound());
-                encodeString.append(toBinaryString(encodeValue, fixedLength));
-            }
-
-
-            int hiTimes = countOccurrencesOfOp(selectedPath, "hi");
-            if (hiTimes != 0) {
-                EncodeLine<Integer> hiTimesEncodeLine = encoderTableListCN.encodeHiTimesProbTable.get(hiTimes);
-                encodeValue = getRandomValue(hiTimesEncodeLine.getLowerBound(),
-                        hiTimesEncodeLine.getUpperBound());
-                encodeString.append(toBinaryString(encodeValue, fixedLength));
-            }
-
-
             int tdTimes = countOccurrencesOfOp(selectedPath, "td");
-            if (tdTimes != 0) {
-                EncodeLine<Integer> tdTimesEncodeLine = encoderTableListCN.encodeTdTimesProbTable.get(tdTimes);
-                encodeValue = getRandomValue(tdTimesEncodeLine.getLowerBound(),
-                        tdTimesEncodeLine.getUpperBound());
+            int hiTimes = countOccurrencesOfOp(selectedPath, "hi");
+            int tiTimes = countOccurrencesOfOp(selectedPath, "ti");
+//          1.编码ifOp
+            if (basePasswd.length() == 1) {
+                EncodeLine<Integer> encodeLine = encoderTableListCN.specialDeleteEncodeLine.get(0);
+                encodeValue = getRandomValue(encodeLine.getLowerBound(),
+                        encodeLine.getUpperBound());
+                encodeString.append(toBinaryString(encodeValue, fixedLength));
+            } else {
+                EncodeLine<Integer> ifDeleteLine =
+                        encoderTableListCN.encodeIfDeleteProbTable.get((selectedPath.contains("hd") || selectedPath.contains("td")) ?
+                                1 : 0);
+                encodeValue = getRandomValue(ifDeleteLine.getLowerBound(),
+                        ifDeleteLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
             }
 
 
-            int tiTimes = countOccurrencesOfOp(selectedPath, "ti");
-            if (tiTimes != 0) {
-                EncodeLine<Integer> tiTimesEncodeLine = encoderTableListCN.encodeTiTimesProbTable.get(tiTimes);
-                encodeValue = getRandomValue(tiTimesEncodeLine.getLowerBound(),
-                        tiTimesEncodeLine.getUpperBound());
+            EncodeLine<Integer> ifInsertLine =
+                    encoderTableListCN.encodeIfInsertProbTable.get((selectedPath.contains("hi") || selectedPath.contains("ti")) ?
+                            1 : 0);
+            encodeValue = getRandomValue(ifInsertLine.getLowerBound(),
+                    ifInsertLine.getUpperBound());
+            encodeString.append(toBinaryString(encodeValue, fixedLength));
+
+//          2.编码opTimes
+
+            if (hdTimes + tdTimes > 0) {
+                EncodeLine<Pair<Integer, Integer>> encodeLine =
+                        encoderTableListCN.encodeDeleteTimesProbTable.get(basePasswd.length()).get(new Pair<>(hdTimes,
+                                tdTimes));
+                encodeValue = getRandomValue(encodeLine.getLowerBound(),
+                        encodeLine.getUpperBound());
+                encodeString.append(toBinaryString(encodeValue, fixedLength));
+            }
+
+            if (hiTimes + tiTimes > 0) {
+                EncodeLine<Pair<Integer, Integer>> encodeLine =
+                        encoderTableListCN.encodeInsertTimesProbTable.get(basePasswd.length() - hdTimes - tdTimes).get(new Pair<>(hiTimes,
+                                tiTimes));
+                encodeValue = getRandomValue(encodeLine.getLowerBound(),
+                        encodeLine.getUpperBound());
                 encodeString.append(toBinaryString(encodeValue, fixedLength));
             }
 
@@ -319,10 +307,33 @@ public class EncoderDecoderListCN {
 
     //  cal method
 
-    private double getPathProb(List<String> path) {
+
+    private double getPathProb(List<String> path, String pw) {
         if (path != null && path.size() > 0) {
 
             double prob = 1;
+            if (path.contains("hd") || path.contains("td")) {
+                prob *= encoderTableListCN.ifDeleteProbMap.get(1);
+                int hdTimes = countOccurrencesOfOp(String.valueOf(path), "hd");
+                int tdTimes = countOccurrencesOfOp(String.valueOf(path), "td");
+                Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> kEncodeLine =
+                        encoderTableListCN.encodeDeleteTimesProbTable.get(pw.length());
+                EncodeLine<Pair<Integer, Integer>> encodeLine = kEncodeLine.get(new Pair<>(hdTimes, tdTimes));
+                prob *= encodeLine.getProb();
+            } else prob *= encoderTableListCN.ifDeleteProbMap.get(0);
+
+            if (path.contains("hi") || path.contains("ti")) {
+                prob *= encoderTableListCN.ifInsertProbMap.get(1);
+                int hiTimes = countOccurrencesOfOp(String.valueOf(path), "hi");
+                int tiTimes = countOccurrencesOfOp(String.valueOf(path), "ti");
+                int hdTimes = countOccurrencesOfOp(String.valueOf(path), "hd");
+                int tdTimes = countOccurrencesOfOp(String.valueOf(path), "td");
+                Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> kEncodeLine =
+                        encoderTableListCN.encodeInsertTimesProbTable.get(pw.length() - hdTimes - tdTimes);
+                EncodeLine<Pair<Integer, Integer>> encodeLine = kEncodeLine.get(new Pair<>(hiTimes, tiTimes));
+                prob *= encodeLine.getProb();
+            } else prob *= encoderTableListCN.ifInsertProbMap.get(0);
+
             for (String op : path) {
                 op = op.trim();
                 if (op.contains("hd")) prob *= encoderTableListCN.hdOpProbMap.get(op);
@@ -336,40 +347,12 @@ public class EncoderDecoderListCN {
         }
     }
 
-    private double getEncodePathProb(List<String> path) {
-        double result = 1;
-        String pathStr = path.toString();
-        if (pathStr.contains("hd")) {
-            result *= encoderTableListCN.encodeIfHdProbTable.get(1).getProb();
-            int hd = countOccurrencesOfOp(pathStr, "hd");
-            result *= encoderTableListCN.encodeHdTimesProbTable.get(hd).getProb();
-        } else result *= 1 - encoderTableListCN.encodeIfHdProbTable.get(1).getProb();
-        if (pathStr.contains("hi")) {
-            result *= encoderTableListCN.encodeIfHiProbTable.get(1).getProb();
-            int hi = countOccurrencesOfOp(pathStr, "hi");
-            result *= encoderTableListCN.encodeHiTimesProbTable.get(hi).getProb();
-        } else result *= 1 - encoderTableListCN.encodeIfHiProbTable.get(1).getProb();
-        if (pathStr.contains("td")) {
-            result *= encoderTableListCN.encodeIfTdProbTable.get(1).getProb();
-            int td = countOccurrencesOfOp(pathStr, "td");
-            result *= encoderTableListCN.encodeTdTimesProbTable.get(td).getProb();
-        } else result *= 1 - encoderTableListCN.encodeIfTdProbTable.get(1).getProb();
-        if (pathStr.contains("ti")) {
-            result *= encoderTableListCN.encodeIfTiProbTable.get(1).getProb();
-            int ti = countOccurrencesOfOp(pathStr, "ti");
-            result *= encoderTableListCN.encodeTiTimesProbTable.get(ti).getProb();
-        } else result *= 1 - encoderTableListCN.encodeIfTiProbTable.get(1).getProb();
-
-        result *= getPathProb(path);
-        return result;
-    }
-
 
     //  tools
-    private double calPr_ssm(List<List<String>> paths) {
+    private double calPr_ssm(List<List<String>> paths, String pw) {
         AtomicDouble pr_ssm = new AtomicDouble(0);
         paths.forEach(path -> {
-            double pathProb = getPathProb(path);
+            double pathProb = getPathProb(path, pw);
             pr_ssm.getAndAdd(pathProb);
         });
         return pr_ssm.get();
@@ -453,7 +436,7 @@ public class EncoderDecoderListCN {
         encodedList = initVault(encodedList);
         int fixedLength = encoderTableListCN.secParam_L;
         List<String> originPswd = new ArrayList<>();
-        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table21L.csv", CharsetUtil.CHARSET_UTF_8);
+//        CsvWriter writer = CsvUtil.getWriter("/app/HvExpData/tables/table21L.csv", CharsetUtil.CHARSET_UTF_8);
         for (int index = 1; index < encodedList.size(); index++) {
             StringBuilder decodedPswd = new StringBuilder();
             String encodedString = encodedList.get(index);
@@ -531,7 +514,7 @@ public class EncoderDecoderListCN {
                         EncodeLine<String> newRandomLine =
                                 EncodeLine.<String>builder().lowerBound(lowerBound).upperBound(upperBound).originValue(randomStr).build();
                         encoderTableListCN.pswdFreqEncodeTable.put(randomStr, newRandomLine);
-                        writer.writeLine(String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
+//                        writer.writeLine(String.valueOf(encoderTableListCN.pswdFreqEncodeTable));
                         decodedPswd.append(randomStr);
                     } else {
                         decodedPswd.append(pswd);
@@ -539,61 +522,73 @@ public class EncoderDecoderListCN {
                     }
                     originPswd.add(decodedPswd.toString());
                 } else {
-                    BigInteger encodedIfHd = new BigInteger(encodeElementList.get(1), 2);
-                    BigInteger encodedIfHi = new BigInteger(encodeElementList.get(2), 2);
-                    BigInteger encodedIfTd = new BigInteger(encodeElementList.get(3), 2);
-                    BigInteger encodedIfTi = new BigInteger(encodeElementList.get(4), 2);
+                    BigInteger encodedIfDelete = new BigInteger(encodeElementList.get(1), 2);
+                    BigInteger encodedIfInsert = new BigInteger(encodeElementList.get(2), 2);
 
-//              编码时if=true:=1 false:=0
-                    int ifHd = findOriginValue(encodedIfHd, encoderTableListCN.encodeIfHdProbTable);
-                    int ifHi = findOriginValue(encodedIfHi, encoderTableListCN.encodeIfHiProbTable);
-                    int ifTd = findOriginValue(encodedIfTd, encoderTableListCN.encodeIfTdProbTable);
-                    int ifTi = findOriginValue(encodedIfTi, encoderTableListCN.encodeIfTiProbTable);
+                    String baseString = originPswd.get(g - 1);
+                    int ifInsert = findOriginValue(encodedIfInsert, encoderTableListCN.encodeIfInsertProbTable);
+                    int ifDelete;
+                    if (baseString.length() == 1) {
+                        ifDelete = 0;
+                    } else {
+                        ifDelete = findOriginValue(encodedIfDelete, encoderTableListCN.encodeIfDeleteProbTable);
+                    }
+                    if (baseString.length() >= 16) {
+                        ifInsert = 0;
+                    }
 
-                    int timesLength = ifHd + ifHi + ifTd + ifTi;
 
+                    int timesLength = ifInsert + ifDelete;
                     Queue<String> opTimesList = new LinkedList<>();
-
-
                     for (int i = 0; i < timesLength; i++) {
-                        String s = encodeElementList.get(5 + i);
+                        String s = encodeElementList.get(3 + i);
                         opTimesList.add(s);
                     }
 //              按照优先级排列
-                    BigInteger encodedHdTimes = ((ifHd == 1) && opTimesList.size() > 0) ?
+                    BigInteger encodedDeleteTimes = ((ifDelete == 1) && opTimesList.size() > 0) ?
                             new BigInteger(opTimesList.poll(), 2) : BigInteger.valueOf(0);
-                    BigInteger encodedTdTimes = ((ifTd == 1) && opTimesList.size() > 0) ?
-                            new BigInteger(opTimesList.poll(), 2) : BigInteger.valueOf(0);
-                    BigInteger encodedHiTimes = ((ifHi == 1) && opTimesList.size() > 0) ?
-                            new BigInteger(opTimesList.poll(), 2) : BigInteger.valueOf(0);
-                    BigInteger encodedTiTimes = ((ifTi == 1) && opTimesList.size() > 0) ?
+                    BigInteger encodedInsertTimes = ((ifInsert == 1) && opTimesList.size() > 0) ?
                             new BigInteger(opTimesList.poll(), 2) : BigInteger.valueOf(0);
 
 
 //              查表找原始值
                     int hdTimes = 0, tdTimes = 0, hiTimes = 0, tiTimes = 0;
-                    if (!encodedHdTimes.equals(BigInteger.valueOf(0))) {
-                        hdTimes = findOriginValue(encodedHdTimes, encoderTableListCN.encodeHdTimesProbTable);
+                    System.out.println(baseString);
+                    if (!encodedDeleteTimes.equals(BigInteger.valueOf(0))) {
+                        Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> encodeDeleteTimesForKLine =
+                                encoderTableListCN.encodeDeleteTimesProbTable.get(baseString.length());
+                        System.out.println("delete k=" + baseString.length());
+                        System.out.println("查找结果：" + encodeDeleteTimesForKLine);
+                        Pair<Integer, Integer> hdAndTdTimes = findOriginValue(encodedDeleteTimes,
+                                encodeDeleteTimesForKLine);
+                        System.out.println("编码后的deleteTimes:" + encodedDeleteTimes);
+                        System.out.println("删除次数" + hdAndTdTimes);
+                        hdTimes = hdAndTdTimes.getKey();
+                        tdTimes = hdAndTdTimes.getValue();
                     }
-                    if (!encodedTdTimes.equals(BigInteger.valueOf(0))) {
-                        tdTimes = findOriginValue(encodedTdTimes, encoderTableListCN.encodeTdTimesProbTable);
 
-                    }
-                    if (!encodedHiTimes.equals(BigInteger.valueOf(0))) {
-                        hiTimes = findOriginValue(encodedHiTimes, encoderTableListCN.encodeHiTimesProbTable);
+                    if (!encodedInsertTimes.equals(BigInteger.valueOf(0))) {
+                        int insertK = baseString.length() - hdTimes - tdTimes;
+                        Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>> encodeInsertTimesForKLine =
+                                encoderTableListCN.encodeInsertTimesProbTable.get(insertK);
+                        System.out.println("insert k=" + insertK);
+                        System.out.println("查找结果：" + encodeInsertTimesForKLine);
+                        System.out.println("编码后的insertTimes:" + encodedInsertTimes);
 
-                    }
-                    if (!encodedTiTimes.equals(BigInteger.valueOf(0))) {
-                        tiTimes = findOriginValue(encodedTiTimes, encoderTableListCN.encodeTiTimesProbTable);
+                        Pair<Integer, Integer> hiAndTiTimes = findOriginValue(encodedInsertTimes,
+                                encodeInsertTimesForKLine);
+                        System.out.println("增加次数" + hiAndTiTimes);
 
+                        hiTimes = hiAndTiTimes.getKey();
+                        tiTimes = hiAndTiTimes.getValue();
                     }
 //              总共操作次数
                     int opsLength = hdTimes + tdTimes + hiTimes + tiTimes;
 //              具体操作list
                     Queue<String> finalOpList = new LinkedList<>();
                     if (timesLength > 0) {
-                        Queue<String> opQueue = new LinkedList<>(encodeElementList.subList(5 + timesLength,
-                                5 + timesLength + opsLength));
+                        Queue<String> opQueue = new LinkedList<>(encodeElementList.subList(3 + timesLength,
+                                3 + timesLength + opsLength));
                         while (hdTimes != 0 && opQueue.size() > 0) {
                             String finalOp = findOriginValue(new BigInteger(opQueue.poll(), 2),
                                     encoderTableListCN.encodeHdOpProbTable);
@@ -619,8 +614,7 @@ public class EncoderDecoderListCN {
                             tiTimes--;
                         }
                     }
-//              找到baseString
-                    String baseString = originPswd.get(g - 1);
+
 //              对baseString执行操作
                     for (String op : finalOpList) {
                         String parameter;
@@ -633,7 +627,7 @@ public class EncoderDecoderListCN {
 //              加入到已解码列表中
                     decodedPswd.append(baseString);
                     originPswd.add(decodedPswd.toString());
-//                    System.out.println(originPswd);
+                    System.out.println("已经解码：" + originPswd);
                 }
 
 
@@ -644,6 +638,7 @@ public class EncoderDecoderListCN {
         return originPswd;
 
     }
+
     static List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
             "a", "b", "c",
             "d", "e",
@@ -651,7 +646,8 @@ public class EncoderDecoderListCN {
             "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
             "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
             ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
-            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " ","Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " ", "Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η",
+            "ρ",
             "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
             "Φ", "Χ", "Ψ",
             "Ω", "ω", "ψ",
@@ -723,16 +719,16 @@ public class EncoderDecoderListCN {
     }
 
     String hd(String baseString, String content) {
-        if (baseString.startsWith(content)) {
-            baseString = baseString.substring(content.length());
-        }
+//        if (baseString.startsWith(content)) {
+        baseString = baseString.substring(content.length());
+//        }
         return baseString;
     }
 
     String td(String baseString, String content) {
-        if (baseString.endsWith(content)) {
-            baseString = baseString.substring(0, baseString.length() - content.length());
-        }
+//        if (baseString.endsWith(content)) {
+        baseString = baseString.substring(0, baseString.length() - content.length());
+//        }
         return baseString;
     }
 

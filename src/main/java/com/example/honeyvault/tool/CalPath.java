@@ -14,39 +14,51 @@ import java.util.stream.Collectors;
 public class CalPath {
 
     public static void main(String[] args) {
-        String source = "!@#1bqweag";
-        JSONArray testStr = JSONUtil.parseArray("[\"!@#1bqweag\", \"#1bqweag\",\"!@#1bqwe\", \"#1bqwe\"," +
-                "\"!@#1bqweag\",\"2,!@#1bqweag\",\"!@#1bqweag2,\",\"12!@#1bqweag2,\",\"12!@#1bqwe\",\"#1bqweag2,\"," +
-                "\"##1bqweag\",\"##1bqweagg\",\"##1bqwea\",\"##1bqweaa\",\"!@#1bqwe##\",\"#1bqwe##\",\"#@#1bqwe##\"," +
-                "\"1#1bqwe##\"]");
-//        List<String> testStr = Arrays.asList("2,!@#1bqweag");
-        for (Object t : testStr) {
-            String target = t.toString();
-//            String target = "a";
-            List<List<String>> lists = breadthFirstSearch(source, target);
-            Set<List<String>> opSet = new HashSet<>(lists);
+//        String source = "!@#1bqweag";
+//        JSONArray testStr = JSONUtil.parseArray("[\"!@#1bqweag\", \"#1bqweag\",\"!@#1bqwe\", \"#1bqwe\"," +
+//                "\"!@#1bqweag\",\"2,!@#1bqweag\",\"!@#1bqweag2,\",\"12!@#1bqweag2,\",\"12!@#1bqwe\",\"#1bqweag2,\"," +
+//                "\"##1bqweag\",\"##1bqweagg\",\"##1bqwea\",\"##1bqweaa\",\"!@#1bqwe##\",\"#1bqwe##\",
+//                \"#@#1bqwe##\"," +
+//                "\"1#1bqwe##\"]");
+////        List<String> testStr = Arrays.asList("2,!@#1bqweag");
+//        for (Object t : testStr) {
+//            String target = t.toString();
+////            String target = "a";
+//            List<List<String>> lists = breadthFirstSearch(source, target);
+//            Set<List<String>> opSet = new HashSet<>(lists);
+//
+//            // 输出所有编辑路径
+//            System.out.println("所有编辑路径：");
+//            for (List<String> path : opSet) {
+//                System.out.println(source+"->"+target);
+//                System.out.println(path.toString());
+//            }
+//        }
 
-            // 输出所有编辑路径
-            System.out.println("所有编辑路径：");
-            for (List<String> path : opSet) {
-                System.out.println(source+"->"+target);
-                System.out.println(path.toString());
-            }
-        }
+        String source = "2,!@#1bqweag";
+        String target = "!@#1bqwe##";
+        List<List<String>> lists = breadthFirstSearch(source, target);
+        lists.forEach(System.out::println);
 
     }
 
 
-    public static List<List<String>> dfs(List<String> list, String source, String target, List<String> opList) {
-        List<List<String>> paths = new ArrayList<>();
+    public static List<List<String>> dfs(List<String> list, String source, String target, List<String> opList,
+                                         int flag) {
+        List<List<String>> paths = new LinkedList<>();
 
         if (source.equals(target)) {
-            paths.add(new ArrayList<>(opList)); // 返回当前路径列表的副本
+            paths.add(new LinkedList<>(opList)); // 返回当前路径列表的副本
             return paths;
         }
-
-        for (String op : List.of("hd", "td", "hi", "ti")) {
-            List<String> newOpList = new ArrayList<>(opList);
+        List<String> l;
+        if (flag == 1) {
+            l = List.of("hd", "td");
+        } else {
+            l = List.of("hi", "ti");
+        }
+        for (String op : l) {
+            List<String> newOpList = new LinkedList<>(opList);
             Pair<String, String> opRes = new Pair<>("", "");
             // 执行操作
             switch (op) {
@@ -67,7 +79,7 @@ public class CalPath {
             String param = opRes.getValue();
             if (!opRes.getKey().equals(source) && param != null) {
                 newOpList.add(op + "(" + param + ")"); // 添加操作到路径列表
-                List<List<String>> subPaths = dfs(list, opRes.getKey(), target, newOpList);
+                List<List<String>> subPaths = dfs(list, opRes.getKey(), target, newOpList, flag);
                 paths.addAll(subPaths);
             }
         }
@@ -285,7 +297,20 @@ public class CalPath {
 
     public static List<List<String>> breadthFirstSearch(String source, String target) {
         List<String> candidateList = initCandidate(source, target);
-        List<List<String>> opList = dfs(candidateList, source, target, new ArrayList<>());
+
+        String comStr = LongestComSubstr(source, target);
+        List<List<String>> opList1 = dfs(candidateList, source, comStr, new LinkedList<>(), 1);
+        List<List<String>> opList2 = dfs(candidateList, comStr, target, new LinkedList<>(), 0);
+        List<List<String>> finalList = new LinkedList<>();
+        for (List<String> strings : opList1) {
+            for (List<String> list : opList2) {
+                List<String> temp = new LinkedList<>(strings);
+                temp.addAll(list);
+                finalList.add(temp);
+            }
+
+        }
+        List<List<String>> opList = finalList;
         Map<String, Integer> priorityMap = new HashMap<>();
         priorityMap.put("hd", 1);
         priorityMap.put("td", 2);
@@ -297,6 +322,9 @@ public class CalPath {
             String op = s.substring(0, 2); // 获取操作类型
             return priorityMap.getOrDefault(op, Integer.MAX_VALUE); // 根据优先级排序
         })));
+        Set<List<String>> set = new HashSet<>(opList);
+        opList.clear();
+        opList.addAll(set);
         return opList;
     }
 

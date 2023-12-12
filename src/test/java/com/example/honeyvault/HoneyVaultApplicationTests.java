@@ -22,17 +22,5 @@ class HoneyVaultApplicationTests {
         opTimesMap.put(3, 0.3);
     }
 
-    Map<Integer, Double> smoothTimesMap(Map<Integer, Double> opTimesMap, double lambdaTimes) {
-        double originSize = opTimesMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double factor = originSize + lambdaTimes * 8;
-        for (int i = 1; i < 9; i++) {
-            if (opTimesMap.containsKey(i)) {
-                opTimesMap.put(i, (opTimesMap.get(i) + lambdaTimes) / factor);
-            } else {
-                opTimesMap.put(i, lambdaTimes / factor);
-            }
-        }
-        return opTimesMap;
-    }
 
 }
