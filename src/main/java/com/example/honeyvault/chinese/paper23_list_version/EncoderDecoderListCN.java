@@ -1,11 +1,8 @@
 package com.example.honeyvault.chinese.paper23_list_version;
 
 import cn.hutool.core.lang.Pair;
-import cn.hutool.core.text.csv.CsvUtil;
-import cn.hutool.core.text.csv.CsvWriter;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.tool.CalPath;
-import com.xiaoleilu.hutool.util.CharsetUtil;
 import com.xiaoleilu.hutool.util.RandomUtil;
 import dev.mccue.guava.concurrent.AtomicDouble;
 import org.springframework.stereotype.Component;
@@ -78,7 +75,9 @@ public class EncoderDecoderListCN {
 
                 double pr1j;
 
-                if (((double) CalPath.LongestComSubstr(pwi1, pwi).length() / Math.max(pwi1.length(), pwi.length()) < 0.125)) {
+                int comLength = CalPath.LongestComSubstr(pwi1, pwi).length();
+                if (((double) comLength / Math.max(pwi1.length(), pwi.length()) < 0.125)
+                        || (pwi.length() < 5 && comLength < pwi.length())) {
                     pr1j = 0;
                 } else {
                     List<List<String>> paths = CalPath.breadthFirstSearch(pwi, pwi1);
@@ -528,7 +527,7 @@ public class EncoderDecoderListCN {
                     String baseString = originPswd.get(g - 1);
                     int ifInsert = findOriginValue(encodedIfInsert, encoderTableListCN.encodeIfInsertProbTable);
                     int ifDelete;
-                    if (baseString.length() == 1) {
+                    if (baseString.length() < 4) {
                         ifDelete = 0;
                     } else {
                         ifDelete = findOriginValue(encodedIfDelete, encoderTableListCN.encodeIfDeleteProbTable);
@@ -639,46 +638,73 @@ public class EncoderDecoderListCN {
 
     }
 
-    static List<String> candidateList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    static List<String> normalList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
             "a", "b", "c",
             "d", "e",
             "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
             "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
             "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
             ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
-            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " ", "Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η",
-            "ρ",
+            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
+    static List<String> greekList = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
             "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
             "Φ", "Χ", "Ψ",
             "Ω", "ω", "ψ",
-            "χ", "φ", "υ"));
-    static Set<String> greekSet = new HashSet<>(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
-            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
-            "Φ", "Χ", "Ψ",
-            "Ω", "ω", "ψ",
-            "χ", "φ", "υ"));
+            "χ", "φ", "υ");
 
 
     private String genRandomStr() {
-        boolean foundInvalid = true;
         StringBuilder s = new StringBuilder();
-        while (foundInvalid) {
-            s = new StringBuilder();
-            int size = RandomUtil.randomInt(1, 16);
-            for (int i = 1; i <= size; i++) {
-                int i1 = RandomUtil.randomInt(0, 123);
-                s.append(candidateList.get(i1));
-                if (i > 5) {
-                    foundInvalid = !isValid(s.toString());
-                    if (foundInvalid) {
-                        break;
+
+        s = new StringBuilder();
+        int size = RandomUtil.randomInt(1, 17);
+        int greekSize = RandomUtil.randomInt(0, Math.min(5, size));
+        int normalSize = size - greekSize;
+
+        while (greekSize * 2 + normalSize > 16 || (size <= 4 && greekSize == 0)) {
+            size = RandomUtil.randomInt(1, 17);
+            if (size <= 4) {
+                greekSize = RandomUtil.randomInt(1, Math.min(5, size + 1));
+            } else {
+                greekSize = RandomUtil.randomInt(0, Math.min(5, size + 1));
+            }
+            normalSize = size - greekSize;
+        }
+        if (size == 1) {
+            int ranS = RandomUtil.randomInt(0, greekList.size());
+            s.append(greekList.get(ranS));
+        } else {
+            for (int i = 0; i < size; i++) {
+                int randomValue = RandomUtil.randomInt(0, 2);
+
+                if (randomValue == 0) {
+                    if (greekSize - 1 != 1) {
+                        greekSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(greekList.get(ranS));
+                    } else {
+                        normalSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(normalList.get(ranS));
+                    }
+                } else {
+                    if (normalSize - 1 != 1) {
+                        normalSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(normalList.get(ranS));
+                    } else {
+                        greekSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(greekList.get(ranS));
                     }
                 }
+
             }
-            foundInvalid = !isValid(s.toString());
         }
+
         return s.toString();
     }
+
 
 
     <T> T findOriginValue(BigInteger encodedValue, Map<T, EncodeLine<T>> encodeTable) {
@@ -756,12 +782,12 @@ public class EncoderDecoderListCN {
         int finalLength = 0;
         for (char c : decodeString.toCharArray()) {
             String s = String.valueOf(c);
-            if (greekSet.contains(s)) {
+            if (greekList.contains(s)) {
                 finalLength += 5;
             } else finalLength++;
-            if (finalLength > 16) return false;
+            if (finalLength > 16) return true;
         }
-        return finalLength >= 5;
+        return finalLength < 5;
     }
 
 }

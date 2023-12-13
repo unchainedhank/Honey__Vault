@@ -1,6 +1,7 @@
 package com.example.honeyvault.english.paper23_list_version;
 
 import cn.hutool.core.lang.Pair;
+import cn.hutool.core.math.MathUtil;
 import com.example.honeyvault.data_access.EncodeLine;
 import com.example.honeyvault.data_access.markov.MarkovStatistic;
 import com.example.honeyvault.data_access.path.PathInfo;
@@ -89,9 +90,12 @@ public class EncoderTableListEng {
                 .entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue() / totalSize));
         double originSize = pswdFreqMap.values().stream().mapToDouble(Double::doubleValue).sum();
-        double pow = 26;
-        for (int i = 2; i < 17; i++) {
+        double pow = Math.pow(121, 4) - Math.pow(95, 4);
+        for (int i = 5; i < 17; i++) {
             pow += Math.pow(121, i);
+        }
+        for (int i = 5; i < 17; i++) {
+            pow -= MathUtil.combinationCount(16, i) * Math.pow(29, i) * Math.pow(95, (16 - i));
         }
         double factor = originSize + listLambda * pow;
         pswdFreqMap.replaceAll((pswd, freq) -> (freq + listLambda) / factor);
@@ -309,7 +313,7 @@ public class EncoderTableListEng {
                                                         double lambdaTimes, int k1) {
         Map<Pair<Integer, Integer>, Double> opTimesProbMap = new HashMap<>();
         double originSize = opTimesMap.values().stream().mapToDouble(Integer::doubleValue).sum();
-        double k = Math.floor(0.875 * k1);
+        double k = Math.min(k1 - 3, Math.floor(0.875 * k1));
         for (int i = 0; i <= k; i++) {
             for (int j = 0; j <= k - i; j++) {
                 if ((i + j) > 0) {

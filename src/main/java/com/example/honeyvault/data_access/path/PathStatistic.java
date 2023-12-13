@@ -19,7 +19,7 @@ public class PathStatistic {
                 "/t_12306_163_replace.csv"));
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
-        for (int i = 1; i < 70000; i++) {
+        for (int i = 1; i < 91577; i++) {
 //        for (int i = 1; i < 91577; i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
@@ -27,8 +27,10 @@ public class PathStatistic {
 //            String p2 = rawList.get(5);
             String replace_12306 = rawList.get(6);
             String replace_163 = rawList.get(7);
-            if (CalPath.LongestComSubstr(replace_12306, replace_163).length() >=
-                    0.125 * Math.max(replace_12306.length(), replace_163.length())) {
+            int comLen = CalPath.LongestComSubstr(replace_12306, replace_163).length();
+            if ((comLen >=
+                    0.125 * Math.max(replace_12306.length(), replace_163.length()))
+            && !((replace_12306.length()<4) && comLen<replace_12306.length())) {
 
                 PathAndAlphaUser user =
                         PathAndAlphaUser.builder().pw2(replace_163).pw1(replace_12306).build();
@@ -46,7 +48,7 @@ public class PathStatistic {
 //        CsvData data = reader.read(FileUtil.file("/app/classes/static/t_12306_163.csv"));
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
-        for (int i = 1; i < 9157; i++) {
+        for (int i = 1; i < 91577; i++) {
 //        for (int i = 1; i < 91577; i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
@@ -72,7 +74,7 @@ public class PathStatistic {
                 "/Clix_BC_all.csv"));
         List<CsvRow> rows = data.getRows();
         Set<PathAndAlphaUser> pathTrainSet = new HashSet<>();
-        for (int i = 1; i < 5000; i++) {
+        for (int i = 1; i < 214005; i++) {
 //        for (int i = 1; i < 214005; i++) {
             CsvRow csvRow = rows.get(i);
             List<String> rawList = csvRow.getRawList();
@@ -80,8 +82,10 @@ public class PathStatistic {
 //            String p2 = rawList.get(5);
             String replace_clix = rawList.get(7);
             String replace_BC = rawList.get(8);
-            if (CalPath.LongestComSubstr(replace_clix, replace_BC).length() >=
-                    0.125 * Math.max(replace_clix.length(), replace_BC.length())) {
+            int comLen = CalPath.LongestComSubstr(replace_clix, replace_BC).length();
+            if (comLen >=
+                    0.125 * Math.max(replace_clix.length(), replace_BC.length())
+                    && !((replace_clix.length()<4) && comLen<replace_BC.length())) {
 
                 PathAndAlphaUser user =
                         PathAndAlphaUser.builder().pw2(replace_BC).pw1(replace_clix).build();
