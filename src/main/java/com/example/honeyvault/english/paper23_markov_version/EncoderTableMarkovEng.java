@@ -288,7 +288,7 @@ public class EncoderTableMarkovEng {
                                                         double lambdaTimes, int k) {
         Map<Pair<Integer, Integer>, Double> opTimesProbMap = new HashMap<>();
         double originSize = opTimesMap.values().stream().mapToDouble(Integer::doubleValue).sum();
-        int up = Math.min(7 * k, 16 - k);
+        int up = Math.min(4 * k, 16 - k);
 //        int k = 16 - k1;
         for (int i = 0; i <= up; i++) {
             for (int j = 0; j <= up - i; j++) {
@@ -312,7 +312,7 @@ public class EncoderTableMarkovEng {
                                                         double lambdaTimes, int k1) {
         Map<Pair<Integer, Integer>, Double> opTimesProbMap = new HashMap<>();
         double originSize = opTimesMap.values().stream().mapToDouble(Integer::doubleValue).sum();
-        double k = Math.floor(0.875 * k1);
+        double k = Math.min(k1 - 3, Math.floor(0.8 * k1));
         for (int i = 0; i <= k; i++) {
             for (int j = 0; j <= k - i; j++) {
                 if ((i + j) > 0) {

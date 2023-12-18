@@ -25,11 +25,69 @@ public class ToolTest {
 
 
     public static void main(String[] args) {
-        System.out.println(f_fit(50));
+        for (int i = 0; i < 1000; i++) {
+            System.out.println(genRandomStr());
+        }
     }
-    public static double f_fit(int i) {
-        return 1 / (1 + Math.exp(-0.324 * i - 0.933));
+
+
+    static List<String> normalList = new ArrayList<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+            "a", "b", "c",
+            "d", "e",
+            "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+            "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
+            ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
+            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
+    static List<String> greekList = Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+            "Φ", "Χ", "Ψ",
+            "Ω", "ω", "ψ",
+            "χ", "φ", "υ");
+
+
+    private static String genRandomStr() {
+        StringBuilder s = new StringBuilder();
+        int size = RandomUtil.randomInt(1, 5);
+        int greekSize = RandomUtil.randomInt(1, size+1);
+        int normalSize = size - greekSize;
+
+
+        if (size == 1) {
+            int ranS = RandomUtil.randomInt(0, greekList.size());
+            s.append(greekList.get(ranS));
+        } else {
+            for (int i = 0; i < size; i++) {
+                int randomValue = RandomUtil.randomInt(0, 2);
+
+                if (randomValue == 0) {
+                    if (greekSize - 1 != 1) {
+                        greekSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(greekList.get(ranS));
+                    } else {
+                        normalSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(normalList.get(ranS));
+                    }
+                } else {
+                    if (normalSize - 1 != 1) {
+                        normalSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(normalList.get(ranS));
+                    } else {
+                        greekSize -= 1;
+                        int ranS = RandomUtil.randomInt(0, greekList.size());
+                        s.append(greekList.get(ranS));
+                    }
+                }
+
+            }
+        }
+
+        return s.toString();
     }
+
 
 
 }

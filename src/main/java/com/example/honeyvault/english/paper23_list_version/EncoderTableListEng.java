@@ -289,7 +289,7 @@ public class EncoderTableListEng {
                                                         double lambdaTimes, int k) {
         Map<Pair<Integer, Integer>, Double> opTimesProbMap = new HashMap<>();
         double originSize = opTimesMap.values().stream().mapToDouble(Integer::doubleValue).sum();
-        int up = Math.min(7 * k, 16 - k);
+        int up = Math.min(4 * k, 16 - k);
 //        int k = 16 - k1;
         for (int i = 0; i <= up; i++) {
             for (int j = 0; j <= up - i; j++) {

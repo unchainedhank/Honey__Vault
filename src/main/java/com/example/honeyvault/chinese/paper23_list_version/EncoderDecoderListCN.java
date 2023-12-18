@@ -192,7 +192,8 @@ public class EncoderDecoderListCN {
             EncodeLine<String> line = encoderTableListCN.pswdFreqEncodeTable.get(targetString);
             encodeValue = getRandomValue(line.getLowerBound(), line.getUpperBound());
             encodeString.append(toBinaryString(encodeValue, fixedLength));
-        } else {
+        }
+        else {
             BigInteger encodeValue;
 //          找到所有可能的路径
             List<List<String>> paths = CalPath.breadthFirstSearch(basePasswd, targetString);
