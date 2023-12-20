@@ -496,7 +496,6 @@ public class EncoderTableMarkovCN {
     }
 
     HashMap<String, HashMap<String, Double>> getMkv_1_95(List<String> passwords, int mkv, double lambdaMkv_1) {
-//        Map<String, Double> map2 = new LinkedHashMap<>();
         HashMap<String, HashMap<String, Double>> result = new LinkedHashMap<>();
         int t = mkv - 1;
         for (String password : passwords) {

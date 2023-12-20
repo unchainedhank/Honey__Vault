@@ -13,6 +13,7 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,10 @@ public class EncoderTableMarkovEng {
     Map<Integer, Double> passwdLengthProbMap;
     Map<String, Double> firstMkvProbMap;
     HashMap<String, HashMap<String, Double>> everyMkv_1ProbMap;
+
+    Map<String, Double> firstMkvProbMap95;
+    HashMap<String, HashMap<String, Double>> everyMkv_1ProbMap95;
+
     Map<Integer, Double> ifInsertProbMap;
     Map<Integer, Double> ifDeleteProbMap;
 
@@ -37,8 +42,10 @@ public class EncoderTableMarkovEng {
 
 
     Map<Integer, EncodeLine<Integer>> encodePasswdLengthTable;
-    Map<String, EncodeLine<String>> encodefirstMkvTable;
+    Map<String, EncodeLine<String>> encodeFirstMkvTable;
+    Map<String, EncodeLine<String>> encodeFirstMkvTable95;
     Map<String, Map<String, EncodeLine<String>>> encodeEveryMkv_1Table = new HashMap<>();
+    Map<String, Map<String, EncodeLine<String>>> encodeEveryMkv_1Table95 = new HashMap<>();
     Map<Integer, EncodeLine<Integer>> encodeIfDeleteProbTable;
     Map<Integer, EncodeLine<Integer>> encodeIfInsertProbTable;
     Map<Integer, Map<Pair<Integer, Integer>, EncodeLine<Pair<Integer, Integer>>>> encodeInsertTimesProbTable =
@@ -51,10 +58,21 @@ public class EncoderTableMarkovEng {
     Map<String, EncodeLine<String>> encodeTdOpProbTable;
     Map<String, EncodeLine<String>> encodeTiOpProbTable;
 
-    Map<String, EncodeLine<String>> absentMkv_1Table;
     Map<String, Double> absentMkv_1ProbMap;
+    Map<String, Double> absentMkv_1ProbMap95;
 
+    Map<String, EncodeLine<String>> absentMkv_1Table;
+    Map<String, EncodeLine<String>> absentMkv_1Table95;
     Map<Integer, EncodeLine<Integer>> specialDeleteEncodeLine = new HashMap<>();
+
+
+    Map<String, Double> pswdFreqMap;
+    Map<String, EncodeLine<String>> pswdFreqEncodeTable = new ConcurrentHashMap<>();
+    BigInteger kNPlus1 = new BigInteger("0");
+
+    Map<String, Map<String, Double>> greekTo95 = new HashMap<>();
+    Map<String, Map<String, EncodeLine<String>>> greekTo95Table = new HashMap<>();
+
 
 
     int secParam_L;
@@ -64,6 +82,19 @@ public class EncoderTableMarkovEng {
     private PathStatistic pathStatistic;
     @Resource
     private MarkovStatistic markovStatistic;
+
+    Set<String> greek = new HashSet<>(Arrays.asList("Α", "τ", "Β", "Γ", "Δ", "σ", "Ε", "Ζ", "Η", "ρ",
+            "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ",
+            "Φ", "Χ", "Ψ",
+            "Ω", "ω", "ψ"
+    ));
+    Set<String> normal = new HashSet<>(Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+            "d", "e",
+            "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+            "U", "V", "W", "X", "Y", "Z", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+",
+            ",", "-", ".", "/", ";", ":", "<", "=", ">", "?",
+            "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~", " "));
 
     @PostConstruct
     void buildCandidateList() {
@@ -91,13 +122,23 @@ public class EncoderTableMarkovEng {
         absentMkv_1Table = probMap2EncodeTable(absentMkv_1ProbMap);
     }
 
+    void buildAbsentMkv_1Table95() {
+        absentMkv_1ProbMap95 = new HashMap<>();
+        double defaultValue = 0.01052631579;
+        normal.forEach(s -> absentMkv_1ProbMap95.put(s, defaultValue));
+        absentMkv_1Table95 = probMap2EncodeTable(absentMkv_1ProbMap95);
+    }
 
-    public void buildEncodeTables(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1) {
+    public void buildEncodeTables(int mkv, double lambdaOp, double lambdaTimes, double lambdaMkv, double lambdaMkv_1,
+                                  double listLambda) {
         List<String> passwds = markovStatistic.parseEngMerge();
+        List<String> passwds95 = markovStatistic.parseEngMergeWithoutPII();
         List<PathInfo> pathInfoTrainSet = pathStatistic.getEngPathTrainSet();
         secParam_L = 128;
         passwdLengthProbMap = initPasswdLengthProbMap(passwds);
         firstMkvProbMap = getMkv(passwds, mkv, lambdaMkv);
+        firstMkvProbMap95 = getMkv95(passwds95, mkv, lambdaMkv);
+
         List<String> pathTrainSet = new ArrayList<>();
         pathInfoTrainSet.forEach(info -> {
             pathTrainSet.add(info.getPath());
@@ -108,11 +149,17 @@ public class EncoderTableMarkovEng {
         tdOpProbMap = maps.get(2);
         tiOpProbMap = maps.get(3);
         buildAbsentMkv_1Table();
+        buildAbsentMkv_1Table95();
         int mkv_1 = mkv + 1;
         everyMkv_1ProbMap = getMkv_1(passwds, mkv_1, lambdaMkv_1);
+        everyMkv_1ProbMap95 = getMkv_1_95(passwds95, mkv_1, lambdaMkv_1);
         everyMkv_1ProbMap.forEach((prefix, map) -> {
             Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
             encodeEveryMkv_1Table.putIfAbsent(prefix, stringEncodeTableLineMap);
+        });
+        everyMkv_1ProbMap95.forEach((prefix, map) -> {
+            Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
+            encodeEveryMkv_1Table95.putIfAbsent(prefix, stringEncodeTableLineMap);
         });
 
 
@@ -156,9 +203,9 @@ public class EncoderTableMarkovEng {
                 EncodeLine.<Integer>builder().prob(1.0).lowerBound(BigInteger.ZERO).upperBound(BigInteger.valueOf(2).pow(secParam_L)).originValue(0).build());
 
 
-
         encodePasswdLengthTable = probMap2EncodeTable(passwdLengthProbMap);
-        encodefirstMkvTable = probMap2EncodeTable(firstMkvProbMap);
+        encodeFirstMkvTable = probMap2EncodeTable(firstMkvProbMap);
+        encodeFirstMkvTable95 = probMap2EncodeTable(firstMkvProbMap95);
 
         encodeIfInsertProbTable = probMap2EncodeTable(ifInsertProbMap);
         encodeIfDeleteProbTable = probMap2EncodeTable(ifDeleteProbMap);
@@ -167,6 +214,35 @@ public class EncoderTableMarkovEng {
         encodeHiOpProbTable = probMap2EncodeTable(hiOpProbMap);
         encodeTdOpProbTable = probMap2EncodeTable(tdOpProbMap);
         encodeTiOpProbTable = probMap2EncodeTable(tiOpProbMap);
+
+        final double totalSize = passwds.size();
+        pswdFreqMap = passwds.stream()
+                .filter(passwd -> passwd.length() <= 4)
+                .collect(Collectors.groupingBy(String::toString, Collectors.counting()))
+                .entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue() / totalSize));
+        double originSize = pswdFreqMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        double pow =
+                29 + Math.pow(121, 2) - Math.pow(95, 2) + Math.pow(121, 3) - Math.pow(95, 3) + Math.pow(121, 4) - Math.pow(95, 4);
+        double factor = originSize + listLambda * pow;
+        pswdFreqMap.replaceAll((pswd, freq) -> (freq + listLambda) / factor);
+        pswdFreqEncodeTable = probMap2EncodeTable(pswdFreqMap);
+
+        EncodeLine<String> maxEncodeLine = null;
+        BigInteger maxUpperBound = BigInteger.valueOf(Long.MIN_VALUE);
+        for (EncodeLine<String> encodeLine : pswdFreqEncodeTable.values()) {
+            if (encodeLine.getUpperBound().compareTo(maxUpperBound) > 0) {
+                maxUpperBound = encodeLine.getUpperBound();
+                maxEncodeLine = encodeLine;
+            }
+        }
+        kNPlus1 = maxEncodeLine.getUpperBound();
+
+        greekTo95 = getMkv_29_95(passwds, mkv_1, lambdaMkv_1);
+        greekTo95.forEach((prefix, map) -> {
+            Map<String, EncodeLine<String>> stringEncodeTableLineMap = probMap2EncodeTable(map);
+            greekTo95Table.put(prefix, stringEncodeTableLineMap);
+        });
     }
 
 
@@ -349,7 +425,7 @@ public class EncoderTableMarkovEng {
         Map<String, Double> result = new LinkedHashMap<>();
         int t = mkv - 1;
         for (String password : passwords) {
-            if (password != null) {
+            if (password != null && password.length() >= 5) {
                 for (int i = 0; i < password.length() - t; i++) {
                     String firstMkv = password.substring(i, i + mkv);
                     result.put(firstMkv, result.getOrDefault(firstMkv, 0.0) + 1.0);
@@ -362,7 +438,28 @@ public class EncoderTableMarkovEng {
         double factor2 = lambdaMkv / factor;
 
         result.replaceAll((firstMkv, times) -> (times + lambdaMkv) / factor);
-        generateStrings(mkv).forEach(s -> result.putIfAbsent(s, factor2));
+        generateStrings(mkv,121).forEach(s -> result.putIfAbsent(s, factor2));
+        return result;
+    }
+
+    Map<String, Double> getMkv95(List<String> passwords, int mkv, double lambdaMkv) {
+        Map<String, Double> result = new LinkedHashMap<>();
+        int t = mkv - 1;
+        for (String password : passwords) {
+            if (password != null && password.length() >= 5) {
+                for (int i = 0; i < password.length() - t; i++) {
+                    String firstMkv = password.substring(i, i + mkv);
+                    result.put(firstMkv, result.getOrDefault(firstMkv, 0.0) + 1.0);
+                }
+            }
+        }
+        double originSize = result.values().stream().mapToDouble(Double::doubleValue).sum();
+        double pow = Math.pow(95, mkv);
+        double factor = originSize + lambdaMkv * pow;
+        double factor2 = lambdaMkv / factor;
+
+        result.replaceAll((firstMkv, times) -> (times + lambdaMkv) / factor);
+        generateStrings(mkv, 95).forEach(s -> result.putIfAbsent(s, factor2));
         return result;
     }
 
@@ -395,31 +492,82 @@ public class EncoderTableMarkovEng {
         return result;
     }
 
-    Set<String> generateStrings(int length) {
-        Set<String> res = new HashSet<>();
-        if (length == 3) {
-            for (String s : candidateList) {
-                for (String value : candidateList) {
-                    for (String item : candidateList) {
-                        String generatedString =
-                                "" + s + value + item;
-                        res.add(generatedString);
+    HashMap<String, HashMap<String, Double>> getMkv_1_95(List<String> passwords, int mkv, double lambdaMkv_1) {
+        HashMap<String, HashMap<String, Double>> result = new LinkedHashMap<>();
+        int t = mkv - 1;
+        for (String password : passwords) {
+            if (password != null) {
+                for (int i = 0; i < password.length() - t; i++) {
+                    String substring = password.substring(i, i + mkv);
+                    String prefix = substring.substring(0, t);
+                    String target = substring.substring(t, mkv);
+
+                    HashMap<String, Double> mkv_1 = result.computeIfAbsent(prefix, k -> new LinkedHashMap<>());
+                    mkv_1.put(target, mkv_1.getOrDefault(target, 0.0) + 1.0);
+                    result.put(prefix, mkv_1);
+                }
+            }
+        }
+        // Apply Laplace smoothing
+
+        result.forEach((prefix, map) -> {
+            double originSize = map.values().stream().mapToDouble(Double::doubleValue).sum();
+            double smoothFactor = lambdaMkv_1 / (originSize + lambdaMkv_1 * 95);
+            map.replaceAll((suffix, times) -> ((times + lambdaMkv_1) / (originSize + lambdaMkv_1 * 95)));
+            normal.forEach(s -> map.putIfAbsent(s, smoothFactor));
+        });
+
+        return result;
+    }
+    Map<String, Map<String, Double>> getMkv_29_95(List<String> passwords, int mkv, double lambdaMkv_1) {
+        Map<String, Map<String, Double>> result = new HashMap<>();
+        int t = mkv - 1;
+        for (String password : passwords) {
+            if (password != null) {
+                for (int i = 0; i < password.length() - t; i++) {
+                    String substring = password.substring(i, i + mkv);
+                    String prefix = substring.substring(0, t);
+                    String target = substring.substring(t, mkv);
+                    if (greek.contains(prefix) && normal.contains(target)) {
+                        System.out.println(prefix);
+                        System.out.println(target);
+                        Map<String, Double> mkv_1 = result.computeIfAbsent(prefix, k -> new LinkedHashMap<>());
+                        mkv_1.put(target, mkv_1.getOrDefault(target, 0.0) + 1.0);
+                        result.put(prefix, mkv_1);
                     }
                 }
             }
-        } else if (length == 1) {
-            for (String item : candidateList) {
+        }
+        // Apply Laplace smoothing
+        HashMap<String, Double> defaultMap = new HashMap<>();
+        normal.forEach(s -> defaultMap.put(s, 0.01052631579));
+        greek.forEach(g -> result.putIfAbsent(g, defaultMap));
+        result.forEach((prefix, map) -> {
+            double originSize = map.values().stream().mapToDouble(Double::doubleValue).sum();
+            double smoothFactor = lambdaMkv_1 / (originSize + lambdaMkv_1 * 95);
+            map.replaceAll((suffix, times) -> ((times + lambdaMkv_1) / (originSize + lambdaMkv_1 * 95)));
+            normal.forEach(s -> map.putIfAbsent(s, smoothFactor));
+        });
+
+        return result;
+    }
+
+    Set<String> generateStrings(int length, int type) {
+
+        Set<String> res = new HashSet<>();
+        if (type == 121) {
+            if (length == 1) {
+                for (String item : candidateList) {
+                    String generatedString =
+                            "" + item;
+                    res.add(generatedString);
+                }
+            }
+        } else {
+            for (String item : normal) {
                 String generatedString =
                         "" + item;
                 res.add(generatedString);
-            }
-        } else if (length == 2) {
-            for (String value : candidateList) {
-                for (String item : candidateList) {
-                    String generatedString =
-                            "" + value + item;
-                    res.add(generatedString);
-                }
             }
         }
         return res;

@@ -117,7 +117,7 @@ public class VaultController {
         System.out.println("19文件1成功");
 
         for (int i = 0; i < 150000; i++) {
-            List<String> decode = null;
+            List<String> decode;
             int maxRetries = 5; // 设置最大重试次数
             int retries = 0;
             while (retries < maxRetries) {
@@ -233,14 +233,15 @@ public class VaultController {
     @PostMapping("/encodeMarkovEng")
     public List<String> encodeMarkovEng(@RequestBody List<String> vault, @RequestParam int mkv,
                                         @RequestParam double lambdaOp, @RequestParam double lambdaTimes,
-                                        @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1
+                                        @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
+                                        @RequestParam double listLambda
     ) {
         List<Pair<String, String>> encode = encoderDecoderMarkovEng.encode(vault, fixedLength, mkv, lambdaOp,
                 lambdaTimes,
-                lambdaMkv, lambdaMkv_1);
+                lambdaMkv, lambdaMkv_1,listLambda);
         List<String> encodedString = new ArrayList<>();
         encode.forEach(e -> encodedString.add(e.getValue()));
-        return encoderDecoderMarkovEng.decode(encodedString, mkv);
+        return encoderDecoderMarkovEng.decode(encodedString, mkv,listLambda);
     }
 
 
@@ -287,7 +288,7 @@ public class VaultController {
 
 
         for (int i = 0; i < 150000; i++) {
-            List<String> decode = null;
+            List<String> decode;
             int maxRetries = 5; // 设置最大重试次数
             int retries = 0;
             while (retries < maxRetries) {
@@ -312,7 +313,8 @@ public class VaultController {
     @GetMapping("genDV2Eng")
     public void genDecoyVault23MarkovEng(@RequestParam int mkv, @RequestParam double lambdaOp,
                                          @RequestParam double lambdaTimes,
-                                         @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1) {
+                                         @RequestParam double lambdaMkv, @RequestParam double lambdaMkv_1,
+    @RequestParam double listLambda) {
         CsvWriter writer1 = CsvUtil.getWriter("/app/HvExpData/decoyVault23MKV_1Eng.csv", CharsetUtil.CHARSET_UTF_8);
         CsvWriter writer3 = CsvUtil.getWriter("/app/HvExpData/decoyVault23MKV_3Eng.csv", CharsetUtil.CHARSET_UTF_8);
 
@@ -325,13 +327,13 @@ public class VaultController {
 //                "/decoyVault23MKV_3.csv", CharsetUtil.CHARSET_UTF_8);
 
 
-        encoderDecoderMarkovEng.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1);
+        encoderDecoderMarkovEng.init(mkv, lambdaOp, lambdaTimes, lambdaMkv, lambdaMkv_1,listLambda);
         for (int i = 0; i < 150000; i++) {
             List<String> decode;
             String ranStr = genRandomStr();
             List<String> decoyVault = new ArrayList<>();
             decoyVault.add(ranStr);
-            decode = encoderDecoderMarkovEng.decode(decoyVault, mkv);
+            decode = encoderDecoderMarkovEng.decode(decoyVault, mkv,listLambda);
             writer1.writeLine(String.valueOf(decode));
         }
         writer1.close();
@@ -343,7 +345,7 @@ public class VaultController {
             for (int j = 0; j < 6; j++) {
                 decoyVault.add(genRandomStr());
             }
-            decode = encoderDecoderMarkovEng.decode(decoyVault, mkv);
+            decode = encoderDecoderMarkovEng.decode(decoyVault, mkv,listLambda);
             writer3.writeLine(String.valueOf(decode));
         }
         writer3.close();
@@ -397,7 +399,7 @@ public class VaultController {
 
 
     private List<String> decode6(int mkv, double lambdaMkv) {
-        List<String> decode = null;
+        List<String> decode;
 
 
         List<String> decoyVault = new ArrayList<>();
@@ -409,7 +411,7 @@ public class VaultController {
     }
 
     private List<String> decode6Eng(int mkv, double lambdaMkv) {
-        List<String> decode = null;
+        List<String> decode;
 
         List<String> decoyVault = new ArrayList<>();
         for (int j = 0; j < 6; j++) {
